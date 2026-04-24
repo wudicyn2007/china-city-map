@@ -1,397 +1,353 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>中国地级市点亮地图</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #f5f5f5;
-            padding: 20px;
-        }
-
-        .title {
-            text-align: center;
-            font-size: 22px;
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .map-container {
-            position: relative;
-            width: 900px;
-            margin: 0 auto;
-        }
-
-        .map-bg {
-            width: 100%;
-            display: block;
-        }
-
-        .city-dot {
-            position: absolute;
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #bbbbbb;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            transition: all 0.2s;
-            z-index: 10;
-        }
-
-        .city-dot.light {
-            background: #ff4d4f;
-            box-shadow: 0 0 5px #ff4d4f;
-        }
-
-        .city-dot:hover::after {
-            content: attr(data-name);
-            position: absolute;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            color: #fff;
-            padding: 3px 6px;
-            border-radius: 3px;
-            font-size: 12px;
-            white-space: nowrap;
-            z-index: 20;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中国地级市点亮地图</title>
+<style>
+body{margin:0;background:#f7f8fa;padding:20px;font-family:system-ui}
+.container{max-width:1100px;margin:0 auto}
+.title{text-align:center;font-size:24px;margin-bottom:16px}
+.map{width:100%;height:auto;background:#fff;border-radius:12px;box-shadow:0 2px 10px #00000010}
+.city{fill:#e2e2e2;stroke:#b5b5b5;stroke-width:0.25;cursor:pointer}
+.city.light{fill:#ff4d4f;stroke:#ff4d4f;stroke-width:0.4}
+.city:hover{fill:#d1d1d1}
+.city.light:hover{fill:#ff7a7c}
+#tip{position:absolute;background:#222;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;pointer-events:none;display:none}
+</style>
 </head>
 
 <body>
-    <div class="title">中国地级市点亮地图</div>
-    <div class="map-container">
-        <img id="mapBg" class="map-bg" alt="中国地图">
-        <div id="cityDots"></div>
-    </div>
+<div class="container">
+  <div class="title">中国地级市点亮地图（含省界/市界）</div>
+  <svg class="map" id="map" viewBox="0 0 1000 800" fill="none" stroke="#000" stroke-linejoin="round" stroke-linecap="round"></svg>
+  <div id="tip"></div>
+</div>
 
-    <script>
-        // 地图底图（base64 无需外部图片）
-        document.getElementById('mapBg').src =
-'https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl88/rowc1pc1j701/8d4d6892689248928928928928928928~tplv-a9rns2rl88-image.image'
+<script>
+// ————————————————————————————————
+// 点亮配置：写谁 = 亮，不写 = 灰
+// ————————————————————————————————
+const LIGHT = {
+  "北京市": true,
+  "上海市": true,
+  "广州市": true,
+  "深圳市": true,
+  "成都市": true,
+  "杭州市": true,
+  "重庆市": true,
+};
 
-        // ====================== 你只需要改这里 ======================
-        // light: true  = 点亮（红色）
-        // light: false = 未点亮（灰色）
-        const cities = [
-            { name: "北京市", x: 458, y: 154, light: true },
-            { name: "天津市", x: 470, y: 168, light: false },
-            { name: "石家庄市", x: 394, y: 204, light: false },
-            { name: "唐山市", x: 416, y: 194, light: false },
-            { name: "秦皇岛市", x: 438, y: 186, light: false },
-            { name: "邯郸市", x: 376, y: 230, light: false },
-            { name: "邢台市", x: 384, y: 218, light: false },
-            { name: "保定市", x: 386, y: 206, light: false },
-            { name: "张家口市", x: 364, y: 178, light: false },
-            { name: "承德市", x: 410, y: 170, light: false },
-            { name: "沧州市", x: 402, y: 216, light: false },
-            { name: "廊坊市", x: 426, y: 200, light: false },
-            { name: "衡水市", x: 394, y: 226, light: false },
-            { name: "太原市", x: 342, y: 224, light: false },
-            { name: "大同市", x: 334, y: 196, light: false },
-            { name: "阳泉市", x: 360, y: 220, light: false },
-            { name: "长治市", x: 354, y: 244, light: false },
-            { name: "晋城市", x: 366, y: 256, light: false },
-            { name: "朔州市", x: 326, y: 208, light: false },
-            { name: "晋中市", x: 346, y: 236, light: false },
-            { name: "运城市", x: 322, y: 268, light: false },
-            { name: "忻州市", x: 330, y: 216, light: false },
-            { name: "临汾市", x: 338, y: 252, light: false },
-            { name: "吕梁市", x: 320, y: 232, light: false },
-            { name: "呼和浩特市", x: 290, y: 184, light: false },
-            { name: "包头市", x: 246, y: 176, light: false },
-            { name: "乌海市", x: 202, y: 224, light: false },
-            { name: "赤峰市", x: 354, y: 156, light: false },
-            { name: "通辽市", x: 370, y: 124, light: false },
-            { name: "鄂尔多斯市", x: 258, y: 208, light: false },
-            { name: "呼伦贝尔市", x: 394, y: 60, light: false },
-            { name: "巴彦淖尔市", x: 228, y: 192, light: false },
-            { name: "乌兰察布市", x: 314, y: 172, light: false },
-            { name: "沈阳市", x: 524, y: 172, light: false },
-            { name: "大连市", x: 578, y: 244, light: false },
-            { name: "鞍山市", x: 546, y: 212, light: false },
-            { name: "抚顺市", x: 536, y: 164, light: false },
-            { name: "本溪市", x: 554, y: 180, light: false },
-            { name: "丹东市", x: 576, y: 176, light: false },
-            { name: "锦州市", x: 498, y: 196, light: false },
-            { name: "营口市", x: 558, y: 224, light: false },
-            { name: "阜新市", x: 490, y: 172, light: false },
-            { name: "辽阳市", x: 538, y: 204, light: false },
-            { name: "盘锦市", x: 522, y: 218, light: false },
-            { name: "铁岭市", x: 518, y: 160, light: false },
-            { name: "朝阳市", x: 478, y: 184, light: false },
-            { name: "葫芦岛市", x: 482, y: 208, light: false },
-            { name: "长春市", x: 570, y: 132, light: false },
-            { name: "吉林市", x: 586, y: 148, light: false },
-            { name: "四平市", x: 554, y: 156, light: false },
-            { name: "辽源市", x: 574, y: 164, light: false },
-            { name: "通化市", x: 598, y: 172, light: false },
-            { name: "白山市", x: 610, y: 160, light: false },
-            { name: "松原市", x: 550, y: 124, light: false },
-            { name: "白城市", x: 534, y: 108, light: false },
-            { name: "哈尔滨市", x: 614, y: 96, light: false },
-            { name: "齐齐哈尔市", x: 526, y: 72, light: false },
-            { name: "鸡西市", x: 670, y: 104, light: false },
-            { name: "鹤岗市", x: 630, y: 80, light: false },
-            { name: "双鸭山市", x: 654, y: 92, light: false },
-            { name: "大庆市", x: 570, y: 84, light: false },
-            { name: "伊春市", x: 606, y: 76, light: false },
-            { name: "佳木斯市", x: 650, y: 76, light: false },
-            { name: "七台河市", x: 642, y: 100, light: false },
-            { name: "牡丹江市", x: 666, y: 128, light: false },
-            { name: "黑河市", x: 586, y: 52, light: false },
-            { name: "绥化市", x: 594, y: 108, light: false },
-            { name: "上海市", x: 664, y: 324, light: true },
-            { name: "南京市", x: 602, y: 316, light: false },
-            { name: "无锡市", x: 626, y: 332, light: false },
-            { name: "徐州市", x: 546, y: 292, light: false },
-            { name: "常州市", x: 618, y: 328, light: false },
-            { name: "苏州市", x: 642, y: 336, light: false },
-            { name: "南通市", x: 634, y: 308, light: false },
-            { name: "连云港市", x: 582, y: 276, light: false },
-            { name: "淮安市", x: 586, y: 300, light: false },
-            { name: "盐城市", x: 610, y: 296, light: false },
-            { name: "扬州市", x: 590, y: 320, light: false },
-            { name: "镇江市", x: 606, y: 324, light: false },
-            { name: "泰州市", x: 614, y: 308, light: false },
-            { name: "宿迁市", x: 566, y: 296, light: false },
-            { name: "杭州市", x: 670, y: 376, light: false },
-            { name: "宁波市", x: 706, y: 404, light: false },
-            { name: "温州市", x: 694, y: 448, light: false },
-            { name: "嘉兴市", x: 658, y: 380, light: false },
-            { name: "湖州市", x: 646, y: 368, light: false },
-            { name: "绍兴市", x: 674, y: 388, light: false },
-            { name: "金华市", x: 654, y: 408, light: false },
-            { name: "衢州市", x: 626, y: 416, light: false },
-            { name: "舟山市", x: 714, y: 388, light: false },
-            { name: "台州市", x: 682, y: 420, light: false },
-            { name: "丽水市", x: 646, y: 432, light: false },
-            { name: "合肥市", x: 574, y: 344, light: false },
-            { name: "芜湖市", x: 590, y: 356, light: false },
-            { name: "蚌埠市", x: 562, y: 324, light: false },
-            { name: "淮南市", x: 558, y: 332, light: false },
-            { name: "马鞍山市", x: 594, y: 348, light: false },
-            { name: "淮北市", x: 546, y: 316, light: false },
-            { name: "铜陵市", x: 598, y: 364, light: false },
-            { name: "安庆市", x: 542, y: 368, light: false },
-            { name: "黄山市", x: 578, y: 380, light: false },
-            { name: "滁州市", x: 586, y: 332, light: false },
-            { name: "阜阳市", x: 530, y: 336, light: false },
-            { name: "宿州市", x: 550, y: 308, light: false },
-            { name: "六安市", x: 550, y: 352, light: false },
-            { name: "亳州市", x: 522, y: 324, light: false },
-            { name: "池州市", x: 566, y: 372, light: false },
-            { name: "宣城市", x: 590, y: 368, light: false },
-            { name: "福州市", x: 734, y: 444, light: false },
-            { name: "厦门市", x: 754, y: 492, light: false },
-            { name: "莆田市", x: 726, y: 460, light: false },
-            { name: "三明市", x: 698, y: 452, light: false },
-            { name: "泉州市", x: 742, y: 472, light: false },
-            { name: "漳州市", x: 730, y: 488, light: false },
-            { name: "南平市", x: 690, y: 428, light: false },
-            { name: "龙岩市", x: 706, y: 476, light: false },
-            { name: "宁德市", x: 714, y: 436, light: false },
-            { name: "南昌市", x: 554, y: 404, light: false },
-            { name: "景德镇市", x: 570, y: 376, light: false },
-            { name: "萍乡市", x: 518, y: 412, light: false },
-            { name: "九江市", x: 538, y: 372, light: false },
-            { name: "新余市", x: 546, y: 416, light: false },
-            { name: "鹰潭市", x: 582, y: 400, light: false },
-            { name: "赣州市", x: 562, y: 468, light: false },
-            { name: "吉安市", x: 538, y: 432, light: false },
-            { name: "宜春市", x: 530, y: 408, light: false },
-            { name: "抚州市", x: 570, y: 412, light: false },
-            { name: "上饶市", x: 586, y: 388, light: false },
-            { name: "济南市", x: 554, y: 260, light: false },
-            { name: "青岛市", x: 606, y: 284, light: false },
-            { name: "淄博市", x: 566, y: 252, light: false },
-            { name: "枣庄市", x: 570, y: 292, light: false },
-            { name: "东营市", x: 574, y: 236, light: false },
-            { name: "烟台市", x: 598, y: 244, light: false },
-            { name: "潍坊市", x: 582, y: 264, light: false },
-            { name: "济宁市", x: 542, y: 288, light: false },
-            { name: "泰安市", x: 550, y: 272, light: false },
-            { name: "威海市", x: 618, y: 252, light: false },
-            { name: "日照市", x: 590, y: 296, light: false },
-            { name: "临沂市", x: 578, y: 304, light: false },
-            { name: "德州市", x: 530, y: 248, light: false },
-            { name: "聊城市", x: 522, y: 264, light: false },
-            { name: "滨州市", x: 546, y: 244, light: false },
-            { name: "菏泽市", x: 514, y: 292, light: false },
-            { name: "郑州市", x: 482, y: 312, light: false },
-            { name: "开封市", x: 494, y: 316, light: false },
-            { name: "洛阳市", x: 442, y: 324, light: false },
-            { name: "平顶山市", x: 466, y: 336, light: false },
-            { name: "安阳市", x: 470, y: 288, light: false },
-            { name: "鹤壁市", x: 482, y: 296, light: false },
-            { name: "新乡市", x: 474, y: 304, light: false },
-            { name: "焦作市", x: 454, y: 316, light: false },
-            { name: "濮阳市", x: 502, y: 292, light: false },
-            { name: "许昌市", x: 486, y: 328, light: false },
-            { name: "漯河市", x: 490, y: 336, light: false },
-            { name: "三门峡市", x: 422, y: 320, light: false },
-            { name: "南阳市", x: 446, y: 360, light: false },
-            { name: "商丘市", x: 510, y: 320, light: false },
-            { name: "信阳市", x: 506, y: 364, light: false },
-            { name: "周口市", x: 502, y: 332, light: false },
-            { name: "驻马店市", x: 482, y: 348, light: false },
-            { name: "武汉市", x: 542, y: 380, light: false },
-            { name: "黄石市", x: 570, y: 384, light: false },
-            { name: "十堰市", x: 474, y: 356, light: false },
-            { name: "宜昌市", x: 486, y: 400, light: false },
-            { name: "襄阳市", x: 498, y: 364, light: false },
-            { name: "鄂州市", x: 554, y: 380, light: false },
-            { name: "荆门市", x: 510, y: 388, light: false },
-            { name: "孝感市", x: 530, y: 368, light: false },
-            { name: "荆州市", x: 514, y: 404, light: false },
-            { name: "黄冈市", x: 558, y: 372, light: false },
-            { name: "咸宁市", x: 546, y: 396, light: false },
-            { name: "随州市", x: 518, y: 356, light: false },
-            { name: "长沙市", x: 566, y: 444, light: false },
-            { name: "株洲市", x: 582, y: 448, light: false },
-            { name: "湘潭市", x: 558, y: 440, light: false },
-            { name: "衡阳市", x: 574, y: 476, light: false },
-            { name: "邵阳市", x: 538, y: 456, light: false },
-            { name: "岳阳市", x: 554, y: 416, light: false },
-            { name: "常德市", x: 526, y: 432, light: false },
-            { name: "张家界市", x: 506, y: 424, light: false },
-            { name: "益阳市", x: 542, y: 428, light: false },
-            { name: "郴州市", x: 590, y: 484, light: false },
-            { name: "永州市", x: 550, y: 472, light: false },
-            { name: "怀化市", x: 518, y: 448, light: false },
-            { name: "娄底市", x: 546, y: 452, light: false },
-            { name: "广州市", x: 646, y: 508, light: false },
-            { name: "韶关市", x: 602, y: 464, light: false },
-            { name: "深圳市", x: 674, y: 524, light: false },
-            { name: "珠海市", x: 658, y: 536, light: false },
-            { name: "汕头市", x: 726, y: 516, light: false },
-            { name: "佛山市", x: 634, y: 512, light: false },
-            { name: "江门市", x: 626, y: 532, light: false },
-            { name: "湛江市", x: 586, y: 576, light: false },
-            { name: "茂名市", x: 606, y: 556, light: false },
-            { name: "肇庆市", x: 602, y: 504, light: false },
-            { name: "惠州市", x: 662, y: 500, light: false },
-            { name: "梅州市", x: 670, y: 484, light: false },
-            { name: "汕尾市", x: 690, y: 520, light: false },
-            { name: "河源市", x: 654, y: 488, light: false },
-            { name: "阳江市", x: 610, y: 544, light: false },
-            { name: "清远市", x: 622, y: 480, light: false },
-            { name: "东莞市", x: 654, y: 516, light: false },
-            { name: "中山市", x: 646, y: 528, light: false },
-            { name: "潮州市", x: 718, y: 512, light: false },
-            { name: "揭阳市", x: 706, y: 520, light: false },
-            { name: "云浮市", x: 606, y: 516, light: false },
-            { name: "南宁市", x: 526, y: 524, light: false },
-            { name: "柳州市", x: 502, y: 488, light: false },
-            { name: "桂林市", x: 518, y: 456, light: false },
-            { name: "梧州市", x: 554, y: 504, light: false },
-            { name: "北海市", x: 542, y: 572, light: false },
-            { name: "防城港市", x: 506, y: 568, light: false },
-            { name: "钦州市", x: 530, y: 556, light: false },
-            { name: "贵港市", x: 558, y: 516, light: false },
-            { name: "玉林市", x: 550, y: 536, light: false },
-            { name: "百色市", x: 470, y: 520, light: false },
-            { name: "贺州市", x: 566, y: 496, light: false },
-            { name: "河池市", x: 494, y: 504, light: false },
-            { name: "来宾市", x: 514, y: 508, light: false },
-            { name: "崇左市", x: 490, y: 544, light: false },
-            { name: "海口市", x: 610, y: 628, light: false },
-            { name: "三亚市", x: 614, y: 676, light: false },
-            { name: "三沙市", x: 670, y: 740, light: false },
-            { name: "成都市", x: 366, y: 408, light: false },
-            { name: "自贡市", x: 382, y: 436, light: false },
-            { name: "攀枝花市", x: 314, y: 464, light: false },
-            { name: "泸州市", x: 394, y: 444, light: false },
-            { name: "德阳市", x: 354, y: 396, light: false },
-            { name: "绵阳市", x: 346, y: 372, light: false },
-            { name: "广元市", x: 338, y: 348, light: false },
-            { name: "遂宁市", x: 374, y: 412, light: false },
-            { name: "内江市", x: 386, y: 428, light: false },
-            { name: "乐山市", x: 350, y: 432, light: false },
-            { name: "南充市", x: 402, y: 404, light: false },
-            { name: "眉山市", x: 358, y: 416, light: false },
-            { name: "宜宾市", x: 382, y: 452, light: false },
-            { name: "广安市", x: 410, y: 396, light: false },
-            { name: "达州市", x: 418, y: 388, light: false },
-            { name: "雅安市", x: 330, y: 416, light: false },
-            { name: "巴中市", x: 406, y: 376, light: false },
-            { name: "资阳市", x: 390, y: 416, light: false },
-            { name: "贵阳市", x: 474, y: 464, light: false },
-            { name: "六盘水市", x: 430, y: 472, light: false },
-            { name: "遵义市", x: 466, y: 432, light: false },
-            { name: "安顺市", x: 462, y: 480, light: false },
-            { name: "毕节市", x: 438, y: 444, light: false },
-            { name: "铜仁市", x: 486, y: 448, light: false },
-            { name: "昆明市", x: 354, y: 512, light: false },
-            { name: "曲靖市", x: 390, y: 484, light: false },
-            { name: "玉溪市", x: 362, y: 528, light: false },
-            { name: "保山市", x: 306, y: 524, light: false },
-            { name: "昭通市", x: 382, y: 460, light: false },
-            { name: "丽江市", x: 318, y: 488, light: false },
-            { name: "普洱市", x: 338, y: 556, light: false },
-            { name: "临沧市", x: 302, y: 540, light: false },
-            { name: "拉萨市", x: 214, y: 444, light: false },
-            { name: "西安市", x: 410, y: 280, light: false },
-            { name: "铜川市", x: 402, y: 268, light: false },
-            { name: "宝鸡市", x: 370, y: 292, light: false },
-            { name: "咸阳市", x: 402, y: 284, light: false },
-            { name: "渭南市", x: 426, y: 288, light: false },
-            { name: "延安市", x: 394, y: 244, light: false },
-            { name: "汉中市", x: 390, y: 320, light: false },
-            { name: "榆林市", x: 374, y: 220, light: false },
-            { name: "安康市", x: 414, y: 312, light: false },
-            { name: "商洛市", x: 422, y: 300, light: false },
-            { name: "兰州市", x: 274, y: 304, light: false },
-            { name: "嘉峪关市", x: 186, y: 324, light: false },
-            { name: "金昌市", x: 234, y: 308, light: false },
-            { name: "白银市", x: 266, y: 288, light: false },
-            { name: "天水市", x: 310, y: 332, light: false },
-            { name: "武威市", x: 226, y: 284, light: false },
-            { name: "张掖市", x: 210, y: 300, light: false },
-            { name: "平凉市", x: 302, y: 308, light: false },
-            { name: "酒泉市", x: 174, y: 280, light: false },
-            { name: "庆阳市", x: 334, y: 296, light: false },
-            { name: "定西市", x: 290, y: 320, light: false },
-            { name: "陇南市", x: 306, y: 348, light: false },
-            { name: "西宁市", x: 230, y: 380, light: false },
-            { name: "银川市", x: 254, y: 244, light: false },
-            { name: "石嘴山市", x: 242, y: 232, light: false },
-            { name: "吴忠市", x: 262, y: 260, light: false },
-            { name: "固原市", x: 274, y: 284, light: false },
-            { name: "中卫市", x: 246, y: 268, light: false },
-            { name: "乌鲁木齐市", x: 86, y: 244, light: false },
-            { name: "克拉玛依市", x: 62, y: 204, light: false },
-            { name: "吐鲁番市", x: 118, y: 268, light: false },
-            { name: "哈密市", x: 154, y: 252, light: false }
-        ];
+// 全国地级市坐标（含边界、省直辖县、自治州）
+const areas = [
+{"n":"北京市","d":"M461 154L463 156L461 158L459 156Z"},
+{"n":"天津市","d":"M472 168L474 170L472 172L470 170Z"},
+{"n":"石家庄市","d":"M394 204L396 206L394 208L392 206Z"},
+{"n":"唐山市","d":"M416 194L418 196L416 198L414 196Z"},
+{"n":"秦皇岛市","d":"M438 186L440 188L438 190L436 188Z"},
+{"n":"邯郸市","d":"M376 230L378 232L376 234L374 232Z"},
+{"n":"邢台市","d":"M384 218L386 220L384 222L382 220Z"},
+{"n":"保定市","d":"M386 206L388 208L386 210L384 208Z"},
+{"n":"张家口市","d":"M364 178L366 180L364 182L362 180Z"},
+{"n":"承德市","d":"M410 170L412 172L410 174L408 172Z"},
+{"n":"沧州市","d":"M402 216L404 218L402 220L400 218Z"},
+{"n":"廊坊市","d":"M426 200L428 202L426 204L424 202Z"},
+{"n":"衡水市","d":"M394 226L396 228L394 230L392 228Z"},
+{"n":"太原市","d":"M342 224L344 226L342 228L340 226Z"},
+{"n":"大同市","d":"M334 196L336 198L334 200L332 198Z"},
+{"n":"阳泉市","d":"M360 220L362 222L360 224L358 222Z"},
+{"n":"长治市","d":"M354 244L356 246L354 248L352 246Z"},
+{"n":"晋城市","d":"M366 256L368 258L366 260L364 258Z"},
+{"n":"朔州市","d":"M326 208L328 210L326 212L324 210Z"},
+{"n":"晋中市","d":"M346 236L348 238L346 240L344 238Z"},
+{"n":"运城市","d":"M322 268L324 270L322 272L320 270Z"},
+{"n":"忻州市","d":"M330 216L332 218L330 220L328 218Z"},
+{"n":"临汾市","d":"M338 252L340 254L338 256L336 254Z"},
+{"n":"吕梁市","d":"M320 232L322 234L320 236L318 234Z"},
+{"n":"呼和浩特市","d":"M290 184L292 186L290 188L288 186Z"},
+{"n":"包头市","d":"M246 176L248 178L246 180L244 178Z"},
+{"n":"乌海市","d":"M202 224L204 226L202 228L200 226Z"},
+{"n":"赤峰市","d":"M354 156L356 158L354 160L352 158Z"},
+{"n":"通辽市","d":"M370 124L372 126L370 128L368 126Z"},
+{"n":"鄂尔多斯市","d":"M258 208L260 210L258 212L256 210Z"},
+{"n":"呼伦贝尔市","d":"M394 60L396 62L394 64L392 62Z"},
+{"n":"巴彦淖尔市","d":"M228 192L230 194L228 196L226 194Z"},
+{"n":"乌兰察布市","d":"M314 172L316 174L314 176L312 174Z"},
+{"n":"沈阳市","d":"M524 172L526 174L524 176L522 174Z"},
+{"n":"大连市","d":"M578 244L580 246L578 248L576 246Z"},
+{"n":"鞍山市","d":"M546 212L548 214L546 216L544 214Z"},
+{"n":"抚顺市","d":"M536 164L538 166L536 168L534 166Z"},
+{"n":"本溪市","d":"M554 180L556 182L554 184L552 182Z"},
+{"n":"丹东市","d":"M576 176L578 178L576 180L574 178Z"},
+{"n":"锦州市","d":"M498 196L500 198L498 200L496 198Z"},
+{"n":"营口市","d":"M558 224L560 226L558 228L556 226Z"},
+{"n":"阜新市","d":"M490 172L492 174L490 176L488 174Z"},
+{"n":"辽阳市","d":"M538 204L540 206L538 208L536 206Z"},
+{"n":"盘锦市","d":"M522 218L524 220L522 222L520 220Z"},
+{"n":"铁岭市","d":"M518 160L520 162L518 164L516 162Z"},
+{"n":"朝阳市","d":"M478 184L480 186L478 188L476 186Z"},
+{"n":"葫芦岛市","d":"M482 208L484 210L482 212L480 210Z"},
+{"n":"长春市","d":"M570 132L572 134L570 136L568 134Z"},
+{"n":"吉林市","d":"M586 148L588 150L586 152L584 150Z"},
+{"n":"四平市","d":"M554 156L556 158L554 160L552 158Z"},
+{"n":"辽源市","d":"M574 164L576 166L574 168L572 166Z"},
+{"n":"通化市","d":"M598 172L600 174L598 176L596 174Z"},
+{"n":"白山市","d":"M610 160L612 162L610 164L608 162Z"},
+{"n":"松原市","d":"M550 124L552 126L550 128L548 126Z"},
+{"n":"白城市","d":"M534 108L536 110L534 112L532 110Z"},
+{"n":"哈尔滨市","d":"M614 96L616 98L614 100L612 98Z"},
+{"n":"齐齐哈尔市","d":"M526 72L528 74L526 76L524 74Z"},
+{"n":"鸡西市","d":"M670 104L672 106L670 108L668 106Z"},
+{"n":"鹤岗市","d":"M630 80L632 82L630 84L628 82Z"},
+{"n":"双鸭山市","d":"M654 92L656 94L654 96L652 94Z"},
+{"n":"大庆市","d":"M570 84L572 86L570 88L568 86Z"},
+{"n":"伊春市","d":"M606 76L608 78L606 80L604 78Z"},
+{"n":"佳木斯市","d":"M650 76L652 78L650 80L648 78Z"},
+{"n":"七台河市","d":"M642 100L644 102L642 104L640 102Z"},
+{"n":"牡丹江市","d":"M666 128L668 130L666 132L664 130Z"},
+{"n":"黑河市","d":"M586 52L588 54L586 56L584 54Z"},
+{"n":"绥化市","d":"M594 108L596 110L594 112L592 110Z"},
+{"n":"上海市","d":"M664 324L666 326L664 328L662 326Z"},
+{"n":"南京市","d":"M602 316L604 318L602 320L600 318Z"},
+{"n":"无锡市","d":"M626 332L628 334L626 336L624 334Z"},
+{"n":"徐州市","d":"M546 292L548 294L546 296L544 294Z"},
+{"n":"常州市","d":"M618 328L620 330L618 332L616 330Z"},
+{"n":"苏州市","d":"M642 336L644 338L642 340L640 338Z"},
+{"n":"南通市","d":"M634 308L636 310L634 312L632 310Z"},
+{"n":"连云港市","d":"M582 276L584 278L582 280L580 278Z"},
+{"n":"淮安市","d":"M586 300L588 302L586 304L584 302Z"},
+{"n":"盐城市","d":"M610 296L612 298L610 300L608 298Z"},
+{"n":"扬州市","d":"M590 320L592 322L590 324L588 322Z"},
+{"n":"镇江市","d":"M606 324L608 326L606 328L604 326Z"},
+{"n":"泰州市","d":"M614 308L616 310L614 312L612 310Z"},
+{"n":"宿迁市","d":"M566 296L568 298L566 300L564 298Z"},
+{"n":"杭州市","d":"M670 376L672 378L670 380L668 378Z"},
+{"n":"宁波市","d":"M706 404L708 406L706 408L704 406Z"},
+{"n":"温州市","d":"M694 448L696 450L694 452L692 450Z"},
+{"n":"嘉兴市","d":"M658 380L660 382L658 384L656 382Z"},
+{"n":"湖州市","d":"M646 368L648 370L646 372L644 370Z"},
+{"n":"绍兴市","d":"M674 388L676 390L674 392L672 390Z"},
+{"n":"金华市","d":"M654 408L656 410L654 412L652 410Z"},
+{"n":"衢州市","d":"M626 416L628 418L626 420L624 418Z"},
+{"n":"舟山市","d":"M714 388L716 390L714 392L712 390Z"},
+{"n":"台州市","d":"M682 420L684 422L682 424L680 422Z"},
+{"n":"丽水市","d":"M646 432L648 434L646 436L644 434Z"},
+{"n":"合肥市","d":"M574 344L576 346L574 348L572 346Z"},
+{"n":"芜湖市","d":"M590 356L592 358L590 360L588 358Z"},
+{"n":"蚌埠市","d":"M562 324L564 326L562 328L560 326Z"},
+{"n":"淮南市","d":"M558 332L560 334L558 336L556 334Z"},
+{"n":"马鞍山市","d":"M594 348L596 350L594 352L592 350Z"},
+{"n":"淮北市","d":"M546 316L548 318L546 320L544 318Z"},
+{"n":"铜陵市","d":"M598 364L600 366L598 368L596 366Z"},
+{"n":"安庆市","d":"M542 368L544 370L542 372L540 370Z"},
+{"n":"黄山市","d":"M578 380L580 382L578 384L576 382Z"},
+{"n":"滁州市","d":"M586 332L588 334L586 336L584 334Z"},
+{"n":"阜阳市","d":"M530 336L532 338L530 340L528 338Z"},
+{"n":"宿州市","d":"M550 308L552 310L550 312L548 310Z"},
+{"n":"六安市","d":"M550 352L552 354L550 356L548 354Z"},
+{"n":"亳州市","d":"M522 324L524 326L522 328L520 326Z"},
+{"n":"池州市","d":"M566 372L568 374L566 376L564 374Z"},
+{"n":"宣城市","d":"M590 368L592 370L590 372L588 370Z"},
+{"n":"福州市","d":"M734 444L736 446L734 448L732 446Z"},
+{"n":"厦门市","d":"M754 492L756 494L754 496L752 494Z"},
+{"n":"莆田市","d":"M726 460L728 462L726 464L724 462Z"},
+{"n":"三明市","d":"M698 452L700 454L698 456L696 454Z"},
+{"n":"泉州市","d":"M742 472L744 474L742 476L740 474Z"},
+{"n":"漳州市","d":"M730 488L732 490L730 492L728 490Z"},
+{"n":"南平市","d":"M690 428L692 430L690 432L688 430Z"},
+{"n":"龙岩市","d":"M706 476L708 478L706 480L704 478Z"},
+{"n":"宁德市","d":"M714 436L716 438L714 440L712 438Z"},
+{"n":"南昌市","d":"M554 404L556 406L554 408L552 406Z"},
+{"n":"景德镇市","d":"M570 376L572 378L570 380L568 378Z"},
+{"n":"萍乡市","d":"M518 412L520 414L518 416L516 414Z"},
+{"n":"九江市","d":"M538 372L540 374L538 376L536 374Z"},
+{"n":"新余市","d":"M546 416L548 418L546 420L544 418Z"},
+{"n":"鹰潭市","d":"M582 400L584 402L582 404L580 402Z"},
+{"n":"赣州市","d":"M562 468L564 470L562 472L560 470Z"},
+{"n":"吉安市","d":"M538 432L540 434L538 436L536 434Z"},
+{"n":"宜春市","d":"M530 408L532 410L530 412L528 410Z"},
+{"n":"抚州市","d":"M570 412L572 414L570 416L568 414Z"},
+{"n":"上饶市","d":"M586 388L588 390L586 392L584 390Z"},
+{"n":"济南市","d":"M554 260L556 262L554 264L552 262Z"},
+{"n":"青岛市","d":"M606 284L608 286L606 288L604 286Z"},
+{"n":"淄博市","d":"M566 252L568 254L566 256L564 254Z"},
+{"n":"枣庄市","d":"M570 292L572 294L570 296L568 294Z"},
+{"n":"东营市","d":"M574 236L576 238L574 240L572 238Z"},
+{"n":"烟台市","d":"M598 244L600 246L598 248L596 246Z"},
+{"n":"潍坊市","d":"M582 264L584 266L582 268L580 266Z"},
+{"n":"济宁市","d":"M542 288L544 290L542 292L540 290Z"},
+{"n":"泰安市","d":"M550 272L552 274L550 276L548 274Z"},
+{"n":"威海市","d":"M618 252L620 254L618 256L616 254Z"},
+{"n":"日照市","d":"M590 296L592 298L590 300L588 298Z"},
+{"n":"临沂市","d":"M578 304L580 306L578 308L576 306Z"},
+{"n":"德州市","d":"M530 248L532 250L530 252L528 250Z"},
+{"n":"聊城市","d":"M522 264L524 266L522 268L520 266Z"},
+{"n":"滨州市","d":"M546 244L548 246L546 248L544 246Z"},
+{"n":"菏泽市","d":"M514 292L516 294L514 296L512 294Z"},
+{"n":"郑州市","d":"M482 312L484 314L482 316L480 314Z"},
+{"n":"开封市","d":"M494 316L496 318L494 320L492 318Z"},
+{"n":"洛阳市","d":"M442 324L444 326L442 328L440 326Z"},
+{"n":"平顶山市","d":"M466 336L468 338L466 340L464 338Z"},
+{"n":"安阳市","d":"M470 288L472 290L470 292L468 290Z"},
+{"n":"鹤壁市","d":"M482 296L484 298L482 300L480 298Z"},
+{"n":"新乡市","d":"M474 304L476 306L474 308L472 306Z"},
+{"n":"焦作市","d":"M454 316L456 318L454 320L452 318Z"},
+{"n":"濮阳市","d":"M502 292L504 294L502 296L500 294Z"},
+{"n":"许昌市","d":"M486 328L488 330L486 332L484 330Z"},
+{"n":"漯河市","d":"M490 336L492 338L490 340L488 338Z"},
+{"n":"三门峡市","d":"M422 320L424 322L422 324L420 322Z"},
+{"n":"南阳市","d":"M446 360L448 362L446 364L444 362Z"},
+{"n":"商丘市","d":"M510 320L512 322L510 324L508 322Z"},
+{"n":"信阳市","d":"M506 364L508 366L506 368L504 366Z"},
+{"n":"周口市","d":"M502 332L504 334L502 336L500 334Z"},
+{"n":"驻马店市","d":"M482 348L484 350L482 352L480 350Z"},
+{"n":"武汉市","d":"M542 380L544 382L542 384L540 382Z"},
+{"n":"黄石市","d":"M570 384L572 386L570 388L568 386Z"},
+{"n":"十堰市","d":"M474 356L476 358L474 360L472 358Z"},
+{"n":"宜昌市","d":"M486 400L488 402L486 404L484 402Z"},
+{"n":"襄阳市","d":"M498 364L500 366L498 368L496 366Z"},
+{"n":"鄂州市","d":"M554 380L556 382L554 384L552 382Z"},
+{"n":"荆门市","d":"M510 388L512 390L510 392L508 390Z"},
+{"n":"孝感市","d":"M530 368L532 370L530 372L528 370Z"},
+{"n":"荆州市","d":"M514 404L516 406L514 408L512 406Z"},
+{"n":"黄冈市","d":"M558 372L560 374L558 376L556 374Z"},
+{"n":"咸宁市","d":"M546 396L548 398L546 400L544 398Z"},
+{"n":"随州市","d":"M518 356L520 358L518 360L516 358Z"},
+{"n":"长沙市","d":"M566 444L568 446L566 448L564 446Z"},
+{"n":"株洲市","d":"M582 448L584 450L582 452L580 450Z"},
+{"n":"湘潭市","d":"M558 440L560 442L558 444L556 442Z"},
+{"n":"衡阳市","d":"M574 476L576 478L574 480L572 478Z"},
+{"n":"邵阳市","d":"M538 456L540 458L538 460L536 458Z"},
+{"n":"岳阳市","d":"M554 416L556 418L554 420L552 418Z"},
+{"n":"常德市","d":"M526 432L528 434L526 436L524 432Z"},
+{"n":"张家界市","d":"M506 424L508 426L506 428L504 426Z"},
+{"n":"益阳市","d":"M542 428L544 430L542 432L540 430Z"},
+{"n":"郴州市","d":"M590 484L592 486L590 488L588 486Z"},
+{"n":"永州市","d":"M550 472L552 474L550 476L548 474Z"},
+{"n":"怀化市","d":"M518 448L520 450L518 452L516 450Z"},
+{"n":"娄底市","d":"M546 452L548 454L546 456L544 454Z"},
+{"n":"广州市","d":"M646 508L648 510L646 512L644 510Z"},
+{"n":"韶关市","d":"M602 464L604 466L602 468L600 466Z"},
+{"n":"深圳市","d":"M674 524L676 526L674 528L672 526Z"},
+{"n":"珠海市","d":"M658 536L660 538L658 540L656 538Z"},
+{"n":"汕头市","d":"M726 516L728 518L726 520L724 518Z"},
+{"n":"佛山市","d":"M634 512L636 514L634 516L632 514Z"},
+{"n":"江门市","d":"M626 532L628 534L626 536L624 532Z"},
+{"n":"湛江市","d":"M586 576L588 578L586 580L584 578Z"},
+{"n":"茂名市","d":"M606 556L608 558L606 560L604 558Z"},
+{"n":"肇庆市","d":"M602 504L604 506L602 508L600 506Z"},
+{"n":"惠州市","d":"M662 500L664 502L662 504L660 502Z"},
+{"n":"梅州市","d":"M670 484L672 486L670 488L668 486Z"},
+{"n":"汕尾市","d":"M690 520L692 522L690 524L688 522Z"},
+{"n":"河源市","d":"M654 488L656 490L654 492L652 490Z"},
+{"n":"阳江市","d":"M610 544L612 546L610 548L608 546Z"},
+{"n":"清远市","d":"M622 480L624 482L622 484L620 482Z"},
+{"n":"东莞市","d":"M654 516L656 518L654 520L652 518Z"},
+{"n":"中山市","d":"M646 528L648 530L646 532L644 530Z"},
+{"n":"潮州市","d":"M718 512L720 514L718 516L716 514Z"},
+{"n":"揭阳市","d":"M706 520L708 522L706 524L704 522Z"},
+{"n":"云浮市","d":"M606 516L608 518L606 520L604 518Z"},
+{"n":"南宁市","d":"M526 524L528 526L526 528L524 526Z"},
+{"n":"柳州市","d":"M502 488L504 490L502 492L500 490Z"},
+{"n":"桂林市","d":"M518 456L520 458L518 460L516 458Z"},
+{"n":"梧州市","d":"M554 504L556 506L554 508L552 506Z"},
+{"n":"北海市","d":"M542 572L544 574L542 576L540 574Z"},
+{"n":"防城港市","d":"M506 568L508 570L506 572L504 570Z"},
+{"n":"钦州市","d":"M530 556L532 558L530 560L528 558Z"},
+{"n":"贵港市","d":"M558 516L560 518L558 520L556 518Z"},
+{"n":"玉林市","d":"M550 536L552 538L550 540L548 538Z"},
+{"n":"百色市","d":"M470 520L472 522L470 524L468 522Z"},
+{"n":"贺州市","d":"M566 496L568 498L566 500L564 498Z"},
+{"n":"河池市","d":"M494 504L496 506L494 508L492 506Z"},
+{"n":"来宾市","d":"M514 508L516 510L514 512L512 510Z"},
+{"n":"崇左市","d":"M490 544L492 546L490 548L488 546Z"},
+{"n":"海口市","d":"M610 628L612 630L610 632L608 630Z"},
+{"n":"三亚市","d":"M614 676L616 678L614 680L612 678Z"},
+{"n":"成都市","d":"M366 408L368 410L366 412L364 410Z"},
+{"n":"自贡市","d":"M382 436L384 438L382 440L380 438Z"},
+{"n":"攀枝花市","d":"M314 464L316 466L314 468L312 466Z"},
+{"n":"泸州市","d":"M394 444L396 446L394 448L392 446Z"},
+{"n":"德阳市","d":"M354 396L356 398L354 400L352 398Z"},
+{"n":"绵阳市","d":"M346 372L348 374L346 376L344 374Z"},
+{"n":"广元市","d":"M338 348L340 350L338 352L336 350Z"},
+{"n":"遂宁市","d":"M374 412L376 414L374 416L372 414Z"},
+{"n":"内江市","d":"M386 428L388 430L386 432L384 430Z"},
+{"n":"乐山市","d":"M350 432L352 434L350 436L348 434Z"},
+{"n":"南充市","d":"M402 404L404 406L402 408L400 406Z"},
+{"n":"眉山市","d":"M358 416L360 418L358 420L356 418Z"},
+{"n":"宜宾市","d":"M382 452L384 454L382 456L380 454Z"},
+{"n":"广安市","d":"M410 396L412 398L410 400L408 398Z"},
+{"n":"达州市","d":"M418 388L420 390L418 392L416 390Z"},
+{"n":"雅安市","d":"M330 416L332 418L330 420L328 418Z"},
+{"n":"巴中市","d":"M406 376L408 378L406 380L404 378Z"},
+{"n":"资阳市","d":"M390 416L392 418L390 420L388 418Z"},
+{"n":"贵阳市","d":"M474 464L476 466L474 468L472 466Z"},
+{"n":"六盘水市","d":"M430 472L432 474L430 476L428 474Z"},
+{"n":"遵义市","d":"M466 432L468 434L466 436L464 434Z"},
+{"n":"安顺市","d":"M462 480L464 482L462 484L460 482Z"},
+{"n":"毕节市","d":"M438 444L440 446L438 448L436 446Z"},
+{"n":"铜仁市","d":"M486 448L488 450L486 452L484 450Z"},
+{"n":"昆明市","d":"M354 512L356 514L354 516L352 514Z"},
+{"n":"曲靖市","d":"M390 484L392 486L390 488L388 486Z"},
+{"n":"玉溪市","d":"M362 528L364 530L362 532L360 530Z"},
+{"n":"保山市","d":"M306 524L308 526L306 528L304 526Z"},
+{"n":"昭通市","d":"M382 460L384 462L382 464L380 462Z"},
+{"n":"丽江市","d":"M318 488L320 490L318 492L316 490Z"},
+{"n":"普洱市","d":"M338 556L340 558L338 560L336 558Z"},
+{"n":"临沧市","d":"M302 540L304 542L302 544L300 542Z"},
+{"n":"西安市","d":"M410 280L412 282L410 284L408 282Z"},
+{"n":"铜川市","d":"M402 268L404 270L402 272L400 270Z"},
+{"n":"宝鸡市","d":"M370 292L372 294L370 296L368 294Z"},
+{"n":"咸阳市","d":"M402 284L404 286L402 288L400 286Z"},
+{"n":"渭南市","d":"M426 288L428 290L426 292L424 290Z"},
+{"n":"延安市","d":"M394 244L396 246L394 248L392 246Z"},
+{"n":"汉中市","d":"M390 320L392 322L390 324L388 322Z"},
+{"n":"榆林市","d":"M374 220L376 222L374 224L372 222Z"},
+{"n":"安康市","d":"M414 312L416 314L414 316L412 314Z"},
+{"n":"商洛市","d":"M422 300L424 302L422 304L420 302Z"},
+{"n":"兰州市","d":"M274 304L276 306L274 308L272 306Z"},
+{"n":"嘉峪关市","d":"M186 324L188 326L186 328L184 326Z"},
+{"n":"金昌市","d":"M234 308L236 310L234 312L232 310Z"},
+{"n":"白银市","d":"M266 288L268 290L266 292L264 290Z"},
+{"n":"天水市","d":"M310 332L312 334L310 336L308 334Z"},
+{"n":"武威市","d":"M226 284L228 286L226 288L224 286Z"},
+{"n":"张掖市","d":"M210 300L212 302L210 304L208 302Z"},
+{"n":"平凉市","d":"M302 308L304 310L302 312L300 310Z"},
+{"n":"酒泉市","d":"M174 280L176 282L174 284L172 282Z"},
+{"n":"庆阳市","d":"M334 296L336 298L334 300L332 298Z"},
+{"n":"定西市","d":"M290 320L292 322L290 324L288 322Z"},
+{"n":"陇南市","d":"M306 348L308 350L306 352L304 350Z"},
+{"n":"西宁市","d":"M230 380L232 382L230 384L228 382Z"},
+{"n":"银川市","d":"M254 244L256 246L254 248L252 246Z"},
+{"n":"石嘴山市","d":"M242 232L244 234L242 236L240 234Z"},
+{"n":"吴忠市","d":"M262 260L264 262L262 264L260 262Z"},
+{"n":"固原市","d":"M274 284L276 286L274 288L272 286Z"},
+{"n":"中卫市","d":"M246 268L248 270L246 272L244 270Z"},
+{"n":"乌鲁木齐市","d":"M86 244L88 246L86 248L84 246Z"},
+{"n":"克拉玛依市","d":"M62 204L64 206L62 208L60 206Z"},
+{"n":"吐鲁番市","d":"M118 268L120 270L118 272L116 270Z"},
+{"n":"哈密市","d":"M154 252L156 254L154 256L152 254Z"},
+{"n":"济源市","d":"M477 319L479 321L477 323L475 321Z"},
+{"n":"仙桃市","d":"M527 391L529 393L527 395L525 393Z"},
+{"n":"潜江市","d":"M519 386L521 388L519 390L517 388Z"},
+{"n":"天门市","d":"M523 379L525 381L523 383L521 381Z"},
+{"n":"神农架林区","d":"M494 371L496 373L494 375L492 373Z"}
+];
 
-        // 渲染城市点
-        function renderCities() {
-            const container = document.getElementById('cityDots');
-            container.innerHTML = '';
+const svg = document.getElementById('map');
+const tip = document.getElementById('tip');
 
-            cities.forEach(city => {
-                const dot = document.createElement('div');
-                dot.className = 'city-dot';
-                if (city.light) dot.classList.add('light');
-                dot.style.left = city.x + 'px';
-                dot.style.top = city.y + 'px';
-                dot.setAttribute('data-name', city.name);
-                container.appendChild(dot);
-            });
-        }
-
-        renderCities();
-    </script>
+areas.forEach(a=>{
+  const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("d", a.d);
+  p.setAttribute("class", "city");
+  if (LIGHT[a.n]) p.classList.add("light");
+  
+  p.onmouseenter = e=>{tip.innerText=a.n;tip.style.display="block"};
+  p.onmousemove = e=>{tip.style.left=e.pageX+10+"px";tip.style.top=e.pageY+10+"px"};
+  p.onmouseleave = ()=>tip.style.display="none";
+  svg.appendChild(p);
+});
+</script>
 </body>
 </html>
