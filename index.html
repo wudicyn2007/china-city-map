@@ -2,102 +2,88 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>中国地级市点亮地图</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #fff; padding: 20px; font-family: system-ui, sans-serif; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        #map { width: 100%; height: auto; background: #fff; }
-        /* 地级市样式 */
+        body { background: #ffffff; padding: 20px; }
+        #map { width: 100%; height: auto; }
         .city {
             fill: #ffffff;
             stroke: #333;
             stroke-width: 0.4;
             cursor: pointer;
-            transition: fill 0.2s;
         }
-        /* 点亮色（和你示范绿色一致） */
-        .city.active { fill: #00882b; }
-        /* 省界加粗 */
+        .city.active {
+            fill: #009944; /* 绿色点亮，和你示范的效果一致 */
+        }
         .province {
             fill: none;
             stroke: #000;
-            stroke-width: 1;
+            stroke-width: 1.2;
             pointer-events: none;
         }
-        /* 悬浮提示 */
-        #tooltip {
+        #tip {
             position: absolute;
-            background: rgba(0,0,0,0.8);
+            background: #222;
             color: #fff;
-            padding: 5px 10px;
-            border-radius: 4px;
+            padding: 4px 8px;
             font-size: 12px;
-            pointer-events: none;
+            border-radius: 4px;
             display: none;
-            z-index: 999;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <svg id="map" viewBox="70 15 130 105">
-            <!-- 全国省界 -->
-            <path class="province" d="M73 18 L135 18 L135 65 L125 75 L115 70 L105 65 L95 70 L85 60 L73 60 Z"/>
-            <!-- 直辖市/主要城市（完整边界简化，可点亮） -->
-            <path class="city active" data-name="北京市" d="M116 40 L117 40 L117 41 L116 41 Z"/>
-            <path class="city active" data-name="上海市" d="M121 31 L122 31 L122 32 L121 32 Z"/>
-            <path class="city active" data-name="广州市" d="M113 23 L114 23 L114 24 L113 24 Z"/>
-            <path class="city active" data-name="深圳市" d="M114 22 L115 22 L115 23 L114 23 Z"/>
-            <path class="city active" data-name="成都市" d="M104 31 L105 31 L105 32 L104 32 Z"/>
-            <path class="city active" data-name="杭州市" d="M120 29 L121 29 L121 30 L120 30 Z"/>
-            <path class="city active" data-name="武汉市" d="M114 28 L115 28 L115 29 L114 29 Z"/>
-            <path class="city active" data-name="西安市" d="M109 34 L110 34 L110 35 L109 35 Z"/>
-            <path class="city active" data-name="重庆市" d="M106 29 L107 29 L107 30 L106 30 Z"/>
-            <path class="city" data-name="南京市" d="M119 31 L120 31 L120 32 L119 32 Z"/>
-            <path class="city" data-name="天津市" d="M117 39 L118 39 L118 40 L117 40 Z"/>
-            <path class="city" data-name="沈阳市" d="M123 40 L124 40 L124 41 L123 41 Z"/>
-            <path class="city" data-name="长春市" d="M125 44 L126 44 L126 45 L125 45 Z"/>
-            <path class="city" data-name="哈尔滨市" d="M126 48 L127 48 L127 49 L126 49 Z"/>
-            <path class="city" data-name="石家庄市" d="M114 38 L115 38 L115 39 L114 39 Z"/>
-            <path class="city" data-name="太原市" d="M112 37 L113 37 L113 38 L112 38 Z"/>
-            <path class="city" data-name="呼和浩特市" d="M111 40 L112 40 L112 41 L111 41 Z"/>
-            <path class="city" data-name="济南市" d="M117 35 L118 35 L118 36 L117 36 Z"/>
-            <path class="city" data-name="合肥市" d="M117 30 L118 30 L118 31 L117 31 Z"/>
-            <path class="city" data-name="福州市" d="M119 25 L120 25 L120 26 L119 26 Z"/>
-            <path class="city" data-name="南昌市" d="M115 27 L116 27 L116 28 L115 28 Z"/>
-            <path class="city" data-name="郑州市" d="M113 32 L114 32 L114 33 L113 33 Z"/>
-            <path class="city" data-name="长沙市" d="M113 24 L114 24 L114 25 L113 25 Z"/>
-            <path class="city" data-name="南宁市" d="M108 22 L109 22 L109 23 L108 23 Z"/>
-            <path class="city" data-name="海口市" d="M110 15 L111 15 L111 16 L110 16 Z"/>
-            <path class="city" data-name="贵阳市" d="M106 25 L107 25 L107 26 L106 26 Z"/>
-            <path class="city" data-name="昆明市" d="M102 22 L103 22 L103 23 L102 23 Z"/>
-            <path class="city" data-name="拉萨市" d="M91 29 L92 29 L92 30 L91 30 Z"/>
-            <path class="city" data-name="兰州市" d="M103 36 L104 36 L104 37 L103 37 Z"/>
-            <path class="city" data-name="西宁市" d="M101 32 L102 32 L102 33 L101 33 Z"/>
-            <path class="city" data-name="银川市" d="M106 38 L107 38 L107 39 L106 39 Z"/>
-            <path class="city" data-name="乌鲁木齐市" d="M87 43 L88 43 L88 44 L87 44 Z"/>
-        </svg>
-        <div id="tooltip"></div>
-    </div>
+    <svg id="map" viewBox="0 0 1000 800" width="100%" height="auto"></svg>
+    <div id="tip"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script>
-        // 悬浮提示逻辑
-        const cities = document.querySelectorAll(".city");
-        const tip = document.getElementById("tooltip");
+        // ========== 在这里添加你要点亮的城市 ==========
+        const LIGHT_CITIES = new Set([
+            "北京市", "上海市", "广州市", "深圳市",
+            "成都市", "杭州市", "武汉市", "西安市", "重庆市"
+        ]);
 
-        cities.forEach(city => {
-            city.addEventListener("mouseenter", () => {
-                tip.textContent = city.getAttribute("data-name");
-                tip.style.display = "block";
-            });
-            city.addEventListener("mousemove", (e) => {
-                tip.style.left = e.pageX + 10 + "px";
-                tip.style.top = e.pageY + 10 + "px";
-            });
-            city.addEventListener("mouseleave", () => {
-                tip.style.display = "none";
+        const svg = d3.select("#map");
+        const tip = d3.select("#tip");
+
+        // 地图投影配置，适配全国范围
+        const projection = d3.geoMercator()
+            .center([104, 36])
+            .scale(900)
+            .translate([500, 400]);
+
+        const path = d3.geoPath().projection(projection);
+
+        // ========== 适配你修改后的文件名 ==========
+        d3.json("city.geojson").then(cityData => {
+            svg.selectAll(".city")
+               .data(cityData.features)
+               .enter()
+               .append("path")
+               .attr("class", d => `city ${LIGHT_CITIES.has(d.properties.name) ? "active" : ""}`)
+               .attr("d", path)
+               .on("mouseover", (e, d) => {
+                   tip.text(d.properties.name).style("display", "block");
+               })
+               .on("mousemove", e => {
+                   tip.style("left", (e.pageX + 10) + "px")
+                      .style("top", (e.pageY + 10) + "px");
+               })
+               .on("mouseout", () => {
+                   tip.style("display", "none");
+               });
+
+            // 加载省界数据
+            d3.json("province.geojson").then(provData => {
+                svg.selectAll(".province")
+                   .data(provData.features)
+                   .enter()
+                   .append("path")
+                   .attr("class", "province")
+                   .attr("d", path);
             });
         });
     </script>
