@@ -2,73 +2,64 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>中国地图</title>
+    <title>中国地级市点亮地图</title>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:#fff; padding:20px; }
-        #map { width:100%; height:80vh; }
-        .city { fill:#fff; stroke:#333; stroke-width:0.4; }
-        .city.active { fill:#00a854; }
-        .province { fill:none; stroke:#000; stroke-width:1.2; }
-        #tip {
-            position:absolute;
-            background:#222;
-            color:#fff;
-            padding:4px 8px;
-            font-size:12px;
-            border-radius:4px;
-            display:none;
-            pointer-events:none;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fff; padding: 20px; }
+        #map { width: 100%; height: 80vh; }
+        .city { fill: #fff; stroke: #333; stroke-width: 0.4; cursor: pointer; }
+        .city.active { fill: #009944; }
+        .province { fill: none; stroke: #000; stroke-width: 1.2; pointer-events: none; }
+        #tip { position: absolute; background: #222; color: #fff; padding: 4px 8px; font-size: 12px; border-radius: 4px; display: none; pointer-events: none; }
     </style>
 </head>
 <body>
+    <svg id="map" viewBox="0 0 1000 800"></svg>
+    <div id="tip"></div>
 
-<svg id="map" viewBox="0 0 1000 800"></svg>
-<div id="tip"></div>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script>
+        const LIGHT_CITIES = new Set([
+            "北京市", "上海市", "广州市", "深圳市", "成都市", "杭州市", "武汉市", "西安市", "重庆市"
+        ]);
 
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script>
-const LIGHT_CITIES = new Set([
-    "北京市","上海市","广州市","深圳市",
-    "成都市","杭州市","武汉市","西安市","重庆市"
-]);
+        const svg = d3.select("#map");
+        const tip = d3.select("#tip");
 
-const svg = d3.select("#map");
-const tip = d3.select("#tip");
+        const projection = d3.geoMercator()
+            .center([104, 36])
+            .scale(900)
+            .translate([500, 400]);
 
-const projection = d3.geoMercator()
-    .center([104, 36])
-    .scale(900)
-    .translate([500, 400]);
+        const path = d3.geoPath().projection(projection);
 
-const path = d3.geoPath().projection(projection);
+        // 直接加载阿里云公开CDN上的完整数据
+        d3.json("https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json")
+            .then(cityData => {
+                svg.selectAll(".city")
+                   .data(cityData.features)
+                   .enter()
+                   .append("path")
+                   .attr("class", d => `city ${LIGHT_CITIES.has(d.properties.name) ? "active" : ""}`)
+                   .attr("d", path)
+                   .on("mouseover", (e, d) => tip.text(d.properties.name).style("display", "block"))
+                   .on("mousemove", e => tip.style("left", (e.pageX + 10) + "px").style("top", (e.pageY + 10) + "px"))
+                   .on("mouseout", () => tip.style("display", "none"));
 
-// ✅ 直接加载阿里云小文件，永不崩溃
-d3.json("https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json")
-.then(cityData => {
-    svg.selectAll(".city")
-       .data(cityData.features)
-       .enter()
-       .append("path")
-       .attr("class", d => `city ${LIGHT_CITIES.has(d.properties.name)?"active":""}`)
-       .attr("d", path)
-       .on("mouseover", (e,d) => tip.text(d.properties.name).style("display","block"))
-       .on("mousemove", e => tip.style("left",e.pageX+10+"px").style("top",e.pageY+10+"px"))
-       .on("mouseout", () => tip.style("display","none"));
-
-    return d3.json("https://geo.datav.aliyun.com/areas_v3/bound/100000.json");
-})
-.then(provData => {
-    svg.selectAll(".province")
-       .data(provData.features)
-       .enter()
-       .append("path")
-       .attr("class","province")
-       .attr("d", path);
-})
-.catch(e => console.log("加载完成"));
-</script>
-
+                return d3.json("https://geo.datav.aliyun.com/areas_v3/bound/100000.json");
+            })
+            .then(provData => {
+                svg.selectAll(".province")
+                   .data(provData.features)
+                   .enter()
+                   .append("path")
+                   .attr("class", "province")
+                   .attr("d", path);
+            })
+            .catch(err => {
+                console.error("地图加载失败：", err);
+                alert("地图数据加载失败！");
+            });
+    </script>
 </body>
 </html>
