@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>色条数字显示</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1e2b33;
+      --muted: #60727b;
+      --line: #cbd9dd;
+      --brand: #2f7f83;
+      --brand-dark: #27666a;
+      --paper: #ffffff;
+      --danger: #b85c4d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #f5f8f8;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .title {
+      display: grid;
+      gap: 3px;
+    }
+
+    .title strong {
+      font-size: 20px;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .button.danger {
+      border-color: #d6a196;
+      color: var(--danger);
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 18px auto 38px;
+      display: grid;
+      gap: 16px;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 16px;
+      box-shadow: 0 16px 38px rgba(31, 48, 57, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .help {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .preview {
+      overflow-x: auto;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .preview-bar {
+      display: grid;
+      min-width: 620px;
+      height: 30px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .preview-labels {
+      position: relative;
+      min-width: 620px;
+      height: 34px;
+      color: #315294;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .preview-labels span {
+      position: absolute;
+      top: 4px;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .preview-labels span:first-child {
+      transform: translateX(0);
+    }
+
+    .preview-labels span:last-child {
+      transform: translateX(-100%);
+    }
+
+    .size-fields,
+    .label-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    label {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #f9fcfc;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    input {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      padding: 0 10px;
+    }
+
+    .toast {
+      min-height: 22px;
+      color: var(--brand-dark);
+      font-weight: 800;
+    }
+
+    @media (max-width: 720px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <strong>色条数字显示</strong>
+      <span id="schemeName">当前方案</span>
+    </div>
+    <div class="actions">
+      <button id="saveButton" class="button primary" type="button">保存</button>
+      <button id="resetButton" class="button danger" type="button">恢复默认</button>
+      <button id="backButton" class="button" type="button">返回地图</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>显示文字</h2>
+      <p class="help">这里只修改色条下方显示的文字，不改变填色边界、颜色和填色结果。每个输入框对应色条上的一个端点或交界线，位置不能增删。</p>
+      <div id="preview" class="preview"></div>
+      <div class="size-fields" id="sizeFields">
+        <label>色条宽度<input id="legendBarWidth" type="number" min="180" max="1200" step="10"></label>
+        <label>色条高度<input id="legendBarHeight" type="number" min="8" max="80" step="1"></label>
+        <label>数字大小<input id="legendLabelFontSize" type="number" min="8" max="48" step="1"></label>
+      </div>
+      <div id="labelFields" class="label-fields"></div>
+    </section>
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script>
+    const ACTIVE_SCHEME_KEY = "china-prefecture-map-active-scheme-v1";
+    const SCHEME_CATALOG_KEY = "china-prefecture-map-schemes-v1";
+    const EXCEL_RULE_SETTINGS_STORAGE_PREFIX = "china-prefecture-map-excel-rule-settings-v1:";
+    const DEFAULT_BUCKET_COUNT = 7;
+    const DEFAULT_BUCKET_COLORS = ["#3151b7", "#2a84d2", "#27a9c2", "#2fa75f", "#d9c73d", "#ee8b2c", "#d84d3f"];
+    const DEFAULT_SETTINGS = {
+      mode: "auto",
+      valueColumn: "",
+      fillDataIndex: 0,
+      rulesText: "",
+      gradientHighColor: "#e76f51",
+      gradientLowColor: "#2a9d8f",
+      gradientProcess: "linear",
+      gradientIntensity: 100,
+      numericFillType: "buckets",
+      bucketCount: DEFAULT_BUCKET_COUNT,
+      bucketBoundaries: "",
+      bucketColors: [...DEFAULT_BUCKET_COLORS],
+      bucketLegendLabels: [],
+      bucketLegendDefaultLabels: [],
+      bucketLegendBarWidth: 500,
+      bucketLegendBarHeight: 22,
+      bucketLegendLabelFontSize: 13
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function activeSchemeId() {
+      return localStorage.getItem(ACTIVE_SCHEME_KEY) || "default";
+    }
+
+    function schemeName() {
+      try {
+        const catalog = JSON.parse(localStorage.getItem(SCHEME_CATALOG_KEY) || "[]");
+        const active = catalog.find((item) => item?.id === activeSchemeId());
+        return active?.name || "默认方案";
+      } catch {
+        return "默认方案";
+      }
+    }
+
+    function storageKey() {
+      return `${EXCEL_RULE_SETTINGS_STORAGE_PREFIX}${activeSchemeId()}`;
+    }
+
+    function isHexColor(value) {
+      return /^#[0-9a-f]{6}$/i.test(String(value || ""));
+    }
+
+    function boundedInteger(value, min, max, fallback) {
+      const number = Math.floor(Number(value));
+      return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+    }
+
+    function normalizeBucketColors(colors, count) {
+      const source = Array.isArray(colors) ? colors : [];
+      return Array.from({ length: count }, (_, index) => {
+        const color = source[index] || DEFAULT_BUCKET_COLORS[index % DEFAULT_BUCKET_COLORS.length];
+        return isHexColor(color) ? color.toLowerCase() : DEFAULT_BUCKET_COLORS[index % DEFAULT_BUCKET_COLORS.length];
+      });
+    }
+
+    function sanitize(settings = {}, fallback = DEFAULT_SETTINGS) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const bucketCount = boundedInteger(source.bucketCount, 2, 12, fallback.bucketCount);
+      const modes = new Set(["auto", "numeric", "rules", "color", "single"]);
+      const processes = new Set(["linear", "smooth", "stepped", "high", "low"]);
+      return {
+        mode: modes.has(source.mode) ? source.mode : fallback.mode,
+        valueColumn: String(source.valueColumn ?? fallback.valueColumn ?? ""),
+        fillDataIndex: boundedInteger(source.fillDataIndex, 0, 7, fallback.fillDataIndex),
+        rulesText: String(source.rulesText ?? fallback.rulesText ?? ""),
+        gradientHighColor: isHexColor(source.gradientHighColor) ? source.gradientHighColor.toLowerCase() : fallback.gradientHighColor,
+        gradientLowColor: isHexColor(source.gradientLowColor) ? source.gradientLowColor.toLowerCase() : fallback.gradientLowColor,
+        gradientProcess: processes.has(source.gradientProcess) ? source.gradientProcess : fallback.gradientProcess,
+        gradientIntensity: boundedInteger(source.gradientIntensity, 20, 100, fallback.gradientIntensity),
+        numericFillType: source.numericFillType === "gradient" ? "gradient" : "buckets",
+        bucketCount,
+        bucketBoundaries: String(source.bucketBoundaries ?? fallback.bucketBoundaries ?? ""),
+        bucketColors: normalizeBucketColors(source.bucketColors || fallback.bucketColors, bucketCount),
+        bucketLegendLabels: Array.isArray(source.bucketLegendLabels) ? source.bucketLegendLabels.map((item) => String(item ?? "")) : [],
+        bucketLegendDefaultLabels: Array.isArray(source.bucketLegendDefaultLabels) ? source.bucketLegendDefaultLabels.map((item) => String(item ?? "")) : [],
+        bucketLegendBarWidth: boundedInteger(source.bucketLegendBarWidth ?? source.legendBarWidth, 180, 1200, fallback.bucketLegendBarWidth ?? 500),
+        bucketLegendBarHeight: boundedInteger(source.bucketLegendBarHeight ?? source.legendBarHeight, 8, 80, fallback.bucketLegendBarHeight ?? 22),
+        bucketLegendLabelFontSize: boundedInteger(source.bucketLegendLabelFontSize ?? source.legendLabelFontSize, 8, 48, fallback.bucketLegendLabelFontSize ?? 13)
+      };
+    }
+
+    function readSettings() {
+      try {
+        return sanitize(JSON.parse(localStorage.getItem(storageKey()) || "null") || DEFAULT_SETTINGS);
+      } catch {
+        return sanitize(DEFAULT_SETTINGS);
+      }
+    }
+
+    function writeSettings(settings) {
+      localStorage.setItem(storageKey(), JSON.stringify(sanitize(settings)));
+    }
+
+    function parseNumbers(text) {
+      return String(text || "")
+        .split(/[,，、\s]+/)
+        .map((part) => Number(String(part).replace(/,/g, "")))
+        .filter(Number.isFinite);
+    }
+
+    function formatNumber(value) {
+      return Number.isInteger(value) ? String(value) : Number(value).toFixed(2).replace(/\.?0+$/, "");
+    }
+
+    function defaultLabels(settings) {
+      const endpoints = parseNumbers(settings.bucketBoundaries);
+      if (endpoints.length >= settings.bucketCount + 1) {
+        return endpoints.slice(0, settings.bucketCount + 1).map(formatNumber);
+      }
+      if (settings.bucketLegendDefaultLabels.length === settings.bucketCount + 1) {
+        return settings.bucketLegendDefaultLabels;
+      }
+      return Array.from({ length: settings.bucketCount + 1 }, (_, index) => {
+        const value = (index / settings.bucketCount) * 100;
+        return formatNumber(value);
+      });
+    }
+
+    function activeLabels(settings) {
+      return settings.bucketLegendLabels.length === settings.bucketCount + 1
+        ? settings.bucketLegendLabels
+        : defaultLabels(settings);
+    }
+
+    let currentSettings = readSettings();
+
+    function renderPreview(settings) {
+      const preview = $("preview");
+      const colors = normalizeBucketColors(settings.bucketColors, settings.bucketCount);
+      const labels = activeLabels(settings);
+      preview.innerHTML = "";
+
+      const bar = document.createElement("div");
+      bar.className = "preview-bar";
+      bar.style.minWidth = `${settings.bucketLegendBarWidth}px`;
+      bar.style.height = `${settings.bucketLegendBarHeight}px`;
+      bar.style.gridTemplateColumns = `repeat(${colors.length}, minmax(0, 1fr))`;
+      colors.forEach((color) => {
+        const segment = document.createElement("span");
+        segment.style.background = color;
+        bar.append(segment);
+      });
+
+      const labelRow = document.createElement("div");
+      labelRow.className = "preview-labels";
+      labelRow.style.minWidth = `${settings.bucketLegendBarWidth}px`;
+      labelRow.style.height = `${Math.max(28, settings.bucketLegendLabelFontSize + 18)}px`;
+      labelRow.style.fontSize = `${settings.bucketLegendLabelFontSize}px`;
+      labels.forEach((text, index) => {
+        const item = document.createElement("span");
+        item.style.left = `${(index / (labels.length - 1)) * 100}%`;
+        item.textContent = text;
+        labelRow.append(item);
+      });
+
+      preview.append(bar, labelRow);
+    }
+
+    function renderLabels(settings) {
+      const host = $("labelFields");
+      const labels = activeLabels(settings);
+      host.innerHTML = "";
+      labels.forEach((value, index) => {
+        const label = document.createElement("label");
+        label.append(index === 0 ? "左端" : (index === labels.length - 1 ? "右端" : `交界${index}`));
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = value;
+        input.dataset.labelIndex = String(index);
+        label.append(input);
+        host.append(label);
+      });
+    }
+
+    function collectLabels() {
+      return Array.from(document.querySelectorAll("[data-label-index]")).map((input) => input.value);
+    }
+
+    function syncSizeInputs(settings) {
+      $("legendBarWidth").value = String(settings.bucketLegendBarWidth);
+      $("legendBarHeight").value = String(settings.bucketLegendBarHeight);
+      $("legendLabelFontSize").value = String(settings.bucketLegendLabelFontSize);
+    }
+
+    function collectSizeSettings(base = currentSettings) {
+      return sanitize({
+        ...base,
+        bucketLegendBarWidth: $("legendBarWidth").value,
+        bucketLegendBarHeight: $("legendBarHeight").value,
+        bucketLegendLabelFontSize: $("legendLabelFontSize").value
+      });
+    }
+
+    function render() {
+      $("schemeName").textContent = `当前方案：${schemeName()}`;
+      syncSizeInputs(currentSettings);
+      renderPreview(currentSettings);
+      renderLabels(currentSettings);
+    }
+
+    $("sizeFields").addEventListener("input", () => {
+      currentSettings = collectSizeSettings({
+        ...currentSettings,
+        bucketLegendLabels: collectLabels(),
+        bucketLegendDefaultLabels: defaultLabels(currentSettings)
+      });
+      renderPreview(currentSettings);
+    });
+
+    $("labelFields").addEventListener("input", () => {
+      currentSettings = collectSizeSettings({
+        ...currentSettings,
+        bucketLegendLabels: collectLabels(),
+        bucketLegendDefaultLabels: defaultLabels(currentSettings)
+      });
+      renderPreview(currentSettings);
+    });
+
+    $("saveButton").addEventListener("click", () => {
+      currentSettings = collectSizeSettings({
+        ...currentSettings,
+        bucketLegendLabels: collectLabels(),
+        bucketLegendDefaultLabels: defaultLabels(currentSettings)
+      });
+      writeSettings(currentSettings);
+      render();
+      $("toast").textContent = "已保存色条数字显示。";
+    });
+
+    $("resetButton").addEventListener("click", () => {
+      currentSettings = sanitize({
+        ...currentSettings,
+        bucketLegendLabels: [],
+        bucketLegendDefaultLabels: defaultLabels(currentSettings),
+        bucketLegendBarWidth: DEFAULT_SETTINGS.bucketLegendBarWidth,
+        bucketLegendBarHeight: DEFAULT_SETTINGS.bucketLegendBarHeight,
+        bucketLegendLabelFontSize: DEFAULT_SETTINGS.bucketLegendLabelFontSize
+      });
+      writeSettings(currentSettings);
+      render();
+      $("toast").textContent = "已恢复默认色条数字。";
+    });
+
+    $("backButton").addEventListener("click", () => {
+      location.href = "../china_prefecture_map.html";
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>填色方案管理</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <main class="page">
+    <header class="top">
+      <div class="title">
+        <h1>填色方案管理</h1>
+        <p>新建、切换、重命名或删除填色方案。主地图页切回后会自动读取当前方案。</p>
+      </div>
+      <button id="backButton" class="button" type="button">回到地图</button>
+    </header>
+
+    <section class="panel grid">
+      <div class="actions">
+        <button id="newSchemeButton" class="button primary" type="button">新建方案</button>
+      </div>
+      <div id="schemeList" class="list"></div>
+    </section>
+  </main>
+
+  <script src="shared.js"></script>
+  <script>
+    const schemeList = document.getElementById("schemeList");
+    const newSchemeButton = document.getElementById("newSchemeButton");
+    const backButton = document.getElementById("backButton");
+
+    function colorCount(schemeId) {
+      return Object.keys(MapStore.readColors(schemeId)).length;
+    }
+
+    function render() {
+      const state = MapStore.readSchemeState();
+      schemeList.innerHTML = "";
+      const fragment = document.createDocumentFragment();
+      state.catalog.forEach((scheme) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.classList.toggle("active", scheme.id === state.activeId);
+
+        const main = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "item-title";
+        title.textContent = scheme.name;
+        const meta = document.createElement("div");
+        meta.className = "item-meta";
+        meta.textContent = `${colorCount(scheme.id)} 个填色区域 · 更新 ${MapStore.formatTime(scheme.updatedAt)}`;
+        main.appendChild(title);
+        main.appendChild(meta);
+
+        const actions = document.createElement("div");
+        actions.className = "inline";
+
+        const openButton = document.createElement("button");
+        openButton.className = "button primary";
+        openButton.type = "button";
+        openButton.textContent = scheme.id === state.activeId ? "当前" : "打开";
+        openButton.disabled = scheme.id === state.activeId;
+        openButton.addEventListener("click", () => {
+          MapStore.writeSchemeState(state.catalog, scheme.id);
+          render();
+        });
+
+        const renameButton = document.createElement("button");
+        renameButton.className = "button";
+        renameButton.type = "button";
+        renameButton.textContent = "重命名";
+        renameButton.addEventListener("click", () => {
+          const next = prompt("请输入方案名称", scheme.name);
+          if (next === null) return;
+          const trimmed = next.trim();
+          if (!trimmed) return;
+          scheme.name = trimmed.slice(0, 40);
+          scheme.updatedAt = Date.now();
+          MapStore.writeSchemeState(state.catalog, state.activeId);
+          render();
+        });
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "button danger";
+        deleteButton.type = "button";
+        deleteButton.textContent = "删除";
+        deleteButton.disabled = state.catalog.length <= 1;
+        deleteButton.addEventListener("click", () => {
+          if (!confirm(`删除方案“${scheme.name}”？`)) return;
+          const nextCatalog = state.catalog.filter((item) => item.id !== scheme.id);
+          const nextActive = state.activeId === scheme.id ? nextCatalog[0]?.id : state.activeId;
+          MapStore.removeSchemeData(scheme.id);
+          MapStore.writeSchemeState(nextCatalog, nextActive);
+          render();
+        });
+
+        actions.appendChild(openButton);
+        actions.appendChild(renameButton);
+        actions.appendChild(deleteButton);
+        item.appendChild(main);
+        item.appendChild(actions);
+        fragment.appendChild(item);
+      });
+      schemeList.appendChild(fragment);
+    }
+
+    newSchemeButton.addEventListener("click", () => {
+      const state = MapStore.readSchemeState();
+      const name = prompt("请输入新方案名称", `方案 ${state.catalog.length + 1}`);
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const scheme = {
+        id: MapStore.makeId("scheme"),
+        name: trimmed.slice(0, 40),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      state.catalog.push(scheme);
+      MapStore.writeColors(scheme.id, {});
+      MapStore.writeSchemeState(state.catalog, scheme.id);
+      render();
+    });
+
+    backButton.addEventListener("click", () => {
+      location.href = "../china_prefecture_map.html";
+    });
+
+    render();
+  </script>
+</body>
+</html>
