@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>榜单设置</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1e2b33;
+      --muted: #60727b;
+      --line: #cbd9dd;
+      --brand: #2f7f83;
+      --brand-dark: #27666a;
+      --paper: #ffffff;
+      --soft: #eef6f5;
+      --danger: #b85c4d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #f5f8f8;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .title {
+      display: grid;
+      gap: 3px;
+    }
+
+    .title strong {
+      font-size: 20px;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .button.danger {
+      border-color: #d6a196;
+      color: var(--danger);
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 18px auto 38px;
+      display: grid;
+      gap: 16px;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 16px;
+      box-shadow: 0 16px 38px rgba(31, 48, 57, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 500;
+    }
+
+    input[type="color"] {
+      padding: 4px;
+    }
+
+    .columns,
+    .formats {
+      display: grid;
+      gap: 10px;
+    }
+
+    .column-row,
+    .format-row {
+      display: grid;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f9fcfc;
+    }
+
+    .column-row {
+      grid-template-columns: 90px minmax(120px, 1fr) minmax(90px, 120px);
+    }
+
+    .format-row {
+      grid-template-columns: 100px minmax(140px, 1fr) repeat(3, minmax(80px, 1fr));
+    }
+
+    .preview-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      min-width: 620px;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid #6aa183;
+      border-radius: 10px;
+      overflow: hidden;
+      table-layout: fixed;
+      width: 100%;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-right: 1px solid rgba(53, 119, 84, 0.45);
+      border-bottom: 1px solid rgba(53, 119, 84, 0.45);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    th {
+      background: #1f6b46;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    tbody tr:nth-child(odd) td {
+      background: var(--rank-row-odd, #d8f0e3);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--rank-row-even, #f7fcf9);
+    }
+
+    .toast {
+      min-height: 22px;
+      color: var(--brand-dark);
+      font-weight: 800;
+    }
+
+    @media (max-width: 820px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .grid,
+      .column-row,
+      .format-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <strong>榜单设置</strong>
+      <span id="schemeName">当前方案</span>
+    </div>
+    <div class="actions">
+      <button id="saveButton" class="button primary" type="button">保存</button>
+      <button id="resetButton" class="button danger" type="button">恢复默认</button>
+      <button id="backButton" class="button" type="button">返回地图</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>基础设置</h2>
+      <div class="grid">
+        <label>
+          行数
+          <input id="visibleRows" type="number" min="1" max="100" step="1">
+        </label>
+        <label>
+          列数
+          <input id="columnCount" type="number" min="1" max="11" step="1">
+        </label>
+        <label>
+          第一行内容
+          <input id="firstRowText" type="text" placeholder="留空则不显示">
+        </label>
+        <label>
+          奇行颜色
+          <input id="oddColor" type="color">
+        </label>
+        <label>
+          偶行颜色
+          <input id="evenColor" type="color">
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>列标题</h2>
+      <div id="columnFields" class="columns"></div>
+    </section>
+
+    <section>
+      <h2>数据格式</h2>
+      <div id="formatFields" class="formats"></div>
+    </section>
+
+    <section>
+      <h2>预览</h2>
+      <div class="preview-wrap">
+        <table id="previewTable"></table>
+      </div>
+    </section>
+
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script>
+    const ACTIVE_SCHEME_KEY = "china-prefecture-map-active-scheme-v1";
+    const SCHEME_CATALOG_KEY = "china-prefecture-map-schemes-v1";
+    const RANK_SETTINGS_STORAGE_PREFIX = "china-prefecture-map-rank-settings-v1:";
+    const RANK_DATA_COLUMN_COUNT = 8;
+    const RANK_BASE_COLUMN_COUNT = 3;
+    const RANK_DATA_COLUMNS = Array.from({ length: RANK_DATA_COLUMN_COUNT }, (_, index) => ({
+      key: `data${index + 1}`,
+      label: `数据${index + 1}`
+    }));
+    const RANK_COLUMNS = [
+      { key: "totalRank", label: "总排名" },
+      { key: "provinceRank", label: "省内" },
+      { key: "cityName", label: "城市" },
+      ...RANK_DATA_COLUMNS
+    ];
+    const RANK_COLUMN_WIDTHS = [60, 70, 90, ...Array.from({ length: RANK_DATA_COLUMN_COUNT }, () => 70)];
+    const DEFAULT_ROW_COLORS = { odd: "#d8f0e3", even: "#f7fcf9" };
+    const DEFAULT_FORMAT = { numberFormat: "decimal", decimalPlaces: 2, significantDigits: 3, totalDigits: 5 };
+    const DEFAULT_SETTINGS = {
+      visibleRows: 10,
+      columnCount: 4,
+      columnTitles: RANK_COLUMNS.map((column) => column.label),
+      columnWidths: [...RANK_COLUMN_WIDTHS],
+      decimalPlaces: 2,
+      significantDigits: 3,
+      totalDigits: 5,
+      numberFormat: "decimal",
+      dataFormats: Array.from({ length: RANK_DATA_COLUMN_COUNT }, () => ({ ...DEFAULT_FORMAT })),
+      firstRowText: "",
+      rowColors: DEFAULT_ROW_COLORS
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function activeSchemeId() {
+      return localStorage.getItem(ACTIVE_SCHEME_KEY) || "default";
+    }
+
+    function schemeName() {
+      try {
+        const catalog = JSON.parse(localStorage.getItem(SCHEME_CATALOG_KEY) || "[]");
+        const active = catalog.find((item) => item?.id === activeSchemeId());
+        return active?.name || "默认方案";
+      } catch {
+        return "默认方案";
+      }
+    }
+
+    function storageKey() {
+      return `${RANK_SETTINGS_STORAGE_PREFIX}${activeSchemeId()}`;
+    }
+
+    function isHexColor(value) {
+      return /^#[0-9a-f]{6}$/i.test(String(value || ""));
+    }
+
+    function boundedInteger(value, min, max, fallback) {
+      const number = Math.floor(Number(value));
+      return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+    }
+
+    function sanitizeFormat(value = {}, fallback = DEFAULT_FORMAT) {
+      const source = value && typeof value === "object" ? value : {};
+      const formats = new Set(["text", "decimal", "significant", "totalDigits"]);
+      return {
+        numberFormat: formats.has(source.numberFormat) ? source.numberFormat : fallback.numberFormat,
+        decimalPlaces: boundedInteger(source.decimalPlaces, 0, 6, fallback.decimalPlaces),
+        significantDigits: boundedInteger(source.significantDigits, 1, 10, fallback.significantDigits),
+        totalDigits: boundedInteger(source.totalDigits, 1, 15, fallback.totalDigits)
+      };
+    }
+
+    function sanitize(settings = {}) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const columnCount = boundedInteger(source.columnCount, 1, RANK_COLUMNS.length, DEFAULT_SETTINGS.columnCount);
+      const titles = Array.isArray(source.columnTitles) ? source.columnTitles : [];
+      const widths = Array.isArray(source.columnWidths) ? source.columnWidths : [];
+      const dataFormats = Array.from({ length: RANK_DATA_COLUMN_COUNT }, (_, index) => {
+        return sanitizeFormat((Array.isArray(source.dataFormats) ? source.dataFormats[index] : null) || source, DEFAULT_FORMAT);
+      });
+      const rowColors = source.rowColors && typeof source.rowColors === "object" ? source.rowColors : {};
+      return {
+        visibleRows: boundedInteger(source.visibleRows, 1, 100, DEFAULT_SETTINGS.visibleRows),
+        columnCount,
+        columnTitles: RANK_COLUMNS.map((column, index) => {
+          const title = String(titles[index] ?? DEFAULT_SETTINGS.columnTitles[index] ?? column.label).trim();
+          return title || column.label;
+        }),
+        columnWidths: RANK_COLUMNS.map((column, index) => {
+          const width = Number(widths[index] ?? DEFAULT_SETTINGS.columnWidths[index]);
+          return Number.isFinite(width) && width > 0 ? width : DEFAULT_SETTINGS.columnWidths[index];
+        }),
+        decimalPlaces: dataFormats[0].decimalPlaces,
+        significantDigits: dataFormats[0].significantDigits,
+        totalDigits: dataFormats[0].totalDigits,
+        numberFormat: dataFormats[0].numberFormat,
+        dataFormats,
+        firstRowText: String(source.firstRowText ?? ""),
+        rowColors: {
+          odd: isHexColor(rowColors.odd) ? rowColors.odd.toLowerCase() : DEFAULT_ROW_COLORS.odd,
+          even: isHexColor(rowColors.even) ? rowColors.even.toLowerCase() : DEFAULT_ROW_COLORS.even
+        }
+      };
+    }
+
+    function readSettings() {
+      try {
+        return sanitize(JSON.parse(localStorage.getItem(storageKey()) || "null") || DEFAULT_SETTINGS);
+      } catch {
+        return sanitize(DEFAULT_SETTINGS);
+      }
+    }
+
+    function writeSettings(settings) {
+      localStorage.setItem(storageKey(), JSON.stringify(sanitize(settings)));
+    }
+
+    let currentSettings = readSettings();
+
+    function formatSample(value, format) {
+      if (format.numberFormat === "text") return String(value);
+      if (format.numberFormat === "significant") return Number(value).toPrecision(format.significantDigits);
+      if (format.numberFormat === "totalDigits") {
+        const text = String(Math.round(Number(value)));
+        return text.length >= format.totalDigits ? text : text.padStart(format.totalDigits, "0");
+      }
+      return Number(value).toFixed(format.decimalPlaces);
+    }
+
+    function renderColumns(settings) {
+      const host = $("columnFields");
+      host.innerHTML = "";
+      const count = boundedInteger(settings.columnCount, 1, RANK_COLUMNS.length, DEFAULT_SETTINGS.columnCount);
+      RANK_COLUMNS.slice(0, count).forEach((column, index) => {
+        const row = document.createElement("div");
+        row.className = "column-row";
+        row.innerHTML = `
+          <strong>${column.label}</strong>
+          <label>标题<input data-title-index="${index}" type="text"></label>
+          <label>宽度<input data-width-index="${index}" type="number" min="40" max="240" step="1"></label>
+        `;
+        row.querySelector(`[data-title-index="${index}"]`).value = settings.columnTitles[index];
+        row.querySelector(`[data-width-index="${index}"]`).value = String(settings.columnWidths[index]);
+        host.append(row);
+      });
+    }
+
+    function visibleDataFormatCount(settings = currentSettings) {
+      const count = boundedInteger(settings.columnCount, 1, RANK_COLUMNS.length, DEFAULT_SETTINGS.columnCount);
+      return Math.max(0, Math.min(RANK_DATA_COLUMN_COUNT, count - RANK_BASE_COLUMN_COUNT));
+    }
+
+    function renderFormats(settings) {
+      const host = $("formatFields");
+      host.innerHTML = "";
+      const count = visibleDataFormatCount(settings);
+      Array.from({ length: count }, (_, index) => `数据${index + 1}`).forEach((name, index) => {
+        const format = settings.dataFormats[index] || DEFAULT_FORMAT;
+        const row = document.createElement("div");
+        row.className = "format-row";
+        row.innerHTML = `
+          <strong>${name}</strong>
+          <label>格式
+            <select data-format-index="${index}">
+              <option value="text">文本</option>
+              <option value="decimal">小数位数</option>
+              <option value="significant">有效位数</option>
+              <option value="totalDigits">总位数</option>
+            </select>
+          </label>
+          <label>小数<input data-decimal-index="${index}" type="number" min="0" max="6" step="1"></label>
+          <label>有效<input data-significant-index="${index}" type="number" min="1" max="10" step="1"></label>
+          <label>总位<input data-total-index="${index}" type="number" min="1" max="15" step="1"></label>
+        `;
+        row.querySelector(`[data-format-index="${index}"]`).value = format.numberFormat;
+        row.querySelector(`[data-decimal-index="${index}"]`).value = String(format.decimalPlaces);
+        row.querySelector(`[data-significant-index="${index}"]`).value = String(format.significantDigits);
+        row.querySelector(`[data-total-index="${index}"]`).value = String(format.totalDigits);
+        host.append(row);
+      });
+    }
+
+    function collectSettings() {
+      const dataFormats = Array.from({ length: RANK_DATA_COLUMN_COUNT }, (_, index) => sanitizeFormat({
+        numberFormat: document.querySelector(`[data-format-index="${index}"]`)?.value,
+        decimalPlaces: document.querySelector(`[data-decimal-index="${index}"]`)?.value,
+        significantDigits: document.querySelector(`[data-significant-index="${index}"]`)?.value,
+        totalDigits: document.querySelector(`[data-total-index="${index}"]`)?.value
+      }));
+      const columnTitles = RANK_COLUMNS.map((column, index) => currentSettings.columnTitles[index] || column.label);
+      const columnWidths = RANK_COLUMNS.map((column, index) => currentSettings.columnWidths[index] || RANK_COLUMN_WIDTHS[index]);
+      document.querySelectorAll("[data-title-index]").forEach((input) => {
+        const index = Number(input.dataset.titleIndex);
+        if (Number.isInteger(index) && RANK_COLUMNS[index]) {
+          columnTitles[index] = input.value || RANK_COLUMNS[index].label;
+        }
+      });
+      document.querySelectorAll("[data-width-index]").forEach((input) => {
+        const index = Number(input.dataset.widthIndex);
+        if (Number.isInteger(index) && RANK_COLUMNS[index]) {
+          columnWidths[index] = input.value || RANK_COLUMN_WIDTHS[index];
+        }
+      });
+      return sanitize({
+        visibleRows: $("visibleRows").value,
+        columnCount: $("columnCount").value,
+        firstRowText: $("firstRowText").value,
+        rowColors: {
+          odd: $("oddColor").value,
+          even: $("evenColor").value
+        },
+        columnTitles,
+        columnWidths,
+        dataFormats,
+        numberFormat: dataFormats[0].numberFormat,
+        decimalPlaces: dataFormats[0].decimalPlaces,
+        significantDigits: dataFormats[0].significantDigits,
+        totalDigits: dataFormats[0].totalDigits
+      });
+    }
+
+    function renderPreview(settings) {
+      document.documentElement.style.setProperty("--rank-row-odd", settings.rowColors.odd);
+      document.documentElement.style.setProperty("--rank-row-even", settings.rowColors.even);
+      const columns = RANK_COLUMNS.slice(0, settings.columnCount);
+      const table = $("previewTable");
+      table.innerHTML = "";
+
+      const colgroup = document.createElement("colgroup");
+      columns.forEach((column, index) => {
+        const col = document.createElement("col");
+        col.style.width = `${settings.columnWidths[index]}px`;
+        colgroup.append(col);
+      });
+
+      const thead = document.createElement("thead");
+      const header = document.createElement("tr");
+      columns.forEach((column, index) => {
+        const th = document.createElement("th");
+        th.textContent = settings.columnTitles[index];
+        header.append(th);
+      });
+      thead.append(header);
+
+      const tbody = document.createElement("tbody");
+      if (settings.firstRowText) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = columns.length;
+        cell.textContent = settings.firstRowText;
+        row.append(cell);
+        tbody.append(row);
+      }
+
+      const sampleRows = [
+        [39, "湖北2", "黄冈市", 68.85, 120.4, 0.057, 18.2, 44, 300, "A", "甲"],
+        [38, "云南1", "昆明市", 69.17, 83.2, 0.064, 22.4, 51, 280, "B", "乙"],
+        [37, "吉林1", "长春市", 69.58, 78.6, 0.059, 21.1, 49, 265, "C", "丙"]
+      ];
+      sampleRows.forEach((values) => {
+        const tr = document.createElement("tr");
+        columns.forEach((column, index) => {
+          const td = document.createElement("td");
+          const raw = values[index];
+          if (column.key.startsWith("data")) {
+            const dataIndex = Number(column.key.replace("data", "")) - 1;
+            td.textContent = formatSample(raw, settings.dataFormats[dataIndex] || DEFAULT_FORMAT);
+          } else {
+            td.textContent = raw;
+          }
+          tr.append(td);
+        });
+        tbody.append(tr);
+      });
+
+      table.append(colgroup, thead, tbody);
+    }
+
+    function fillForm(settings) {
+      currentSettings = sanitize(settings);
+      $("schemeName").textContent = `当前方案：${schemeName()}`;
+      $("visibleRows").value = String(currentSettings.visibleRows);
+      $("columnCount").value = String(currentSettings.columnCount);
+      $("firstRowText").value = currentSettings.firstRowText;
+      $("oddColor").value = currentSettings.rowColors.odd;
+      $("evenColor").value = currentSettings.rowColors.even;
+      renderColumns(currentSettings);
+      renderFormats(currentSettings);
+      renderPreview(currentSettings);
+    }
+
+    function save() {
+      currentSettings = collectSettings();
+      writeSettings(currentSettings);
+      fillForm(currentSettings);
+      $("toast").textContent = "已保存。回到地图后会自动应用。";
+    }
+
+    ["visibleRows", "columnCount", "firstRowText", "oddColor", "evenColor"].forEach((id) => {
+      $(id).addEventListener("input", () => {
+        currentSettings = collectSettings();
+        if (id === "columnCount") {
+          renderColumns(currentSettings);
+          renderFormats(currentSettings);
+        }
+        renderPreview(currentSettings);
+      });
+    });
+    $("columnFields").addEventListener("input", () => {
+      currentSettings = collectSettings();
+      renderPreview(currentSettings);
+    });
+    $("formatFields").addEventListener("input", () => {
+      currentSettings = collectSettings();
+      renderPreview(currentSettings);
+    });
+    $("formatFields").addEventListener("change", () => {
+      currentSettings = collectSettings();
+      renderPreview(currentSettings);
+    });
+    $("saveButton").addEventListener("click", save);
+    $("resetButton").addEventListener("click", () => {
+      currentSettings = sanitize(DEFAULT_SETTINGS);
+      writeSettings(currentSettings);
+      fillForm(currentSettings);
+      $("toast").textContent = "已恢复默认并保存。";
+    });
+    $("backButton").addEventListener("click", () => {
+      location.href = "../china_prefecture_map.html";
+    });
+
+    fillForm(currentSettings);
+  </script>
+</body>
+</html>

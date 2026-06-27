@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Excel 填色规则</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1e2b33;
+      --muted: #60727b;
+      --line: #cbd9dd;
+      --brand: #2f7f83;
+      --brand-dark: #27666a;
+      --soft: #eef6f5;
+      --paper: #ffffff;
+      --danger: #b85c4d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #f5f8f8;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .title {
+      display: grid;
+      gap: 3px;
+    }
+
+    .title strong {
+      font-size: 20px;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .button.danger {
+      border-color: #d6a196;
+      color: var(--danger);
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 18px auto 38px;
+      display: grid;
+      gap: 16px;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 16px;
+      box-shadow: 0 16px 38px rgba(31, 48, 57, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 500;
+    }
+
+    input,
+    select {
+      min-height: 38px;
+      padding: 0 10px;
+    }
+
+    textarea {
+      min-height: 140px;
+      padding: 10px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input[type="color"] {
+      padding: 4px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+    }
+
+    .choice-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .choice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .choice input {
+      width: 20px;
+      min-height: 20px;
+      accent-color: var(--brand);
+    }
+
+    .bucket-colors,
+    .label-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .bucket-color,
+    .label-field {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #f9fcfc;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .bucket-color input {
+      min-height: 34px;
+    }
+
+    .preview {
+      overflow-x: auto;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .preview-bar {
+      display: grid;
+      min-width: 520px;
+      height: 24px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .preview-labels {
+      position: relative;
+      min-width: 520px;
+      height: 28px;
+      color: #315294;
+      font-weight: 800;
+    }
+
+    .preview-labels span {
+      position: absolute;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .preview-labels span:first-child {
+      transform: translateX(0);
+    }
+
+    .preview-labels span:last-child {
+      transform: translateX(-100%);
+    }
+
+    .help {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .toast {
+      min-height: 22px;
+      color: var(--brand-dark);
+      font-weight: 800;
+    }
+
+    @media (max-width: 720px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .grid,
+      .choice-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <strong>Excel 填色规则</strong>
+      <span id="schemeName">当前方案</span>
+    </div>
+    <div class="actions">
+      <button id="saveButton" class="button primary" type="button">保存</button>
+      <button id="resetButton" class="button danger" type="button">恢复默认</button>
+      <button id="backButton" class="button" type="button">返回地图</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>导入与填色</h2>
+      <div class="grid">
+        <label>
+          导入模式
+          <select id="mode">
+            <option value="auto">自动：颜色列 / 规则 / 数字填色</option>
+            <option value="numeric">按数字列填色</option>
+            <option value="rules">按规则列填色</option>
+            <option value="color">按颜色列填色</option>
+            <option value="single">所有匹配城市用当前颜色</option>
+          </select>
+        </label>
+        <label>
+          数据列
+          <input id="valueColumn" type="text" placeholder="最多8列，例如 B,C,D,E 或 GDP,人口,增速">
+        </label>
+        <label>
+          填色使用
+          <select id="fillDataIndex">
+            <option value="0">第1组数据</option>
+            <option value="1">第2组数据</option>
+            <option value="2">第3组数据</option>
+            <option value="3">第4组数据</option>
+            <option value="4">第5组数据</option>
+            <option value="5">第6组数据</option>
+            <option value="6">第7组数据</option>
+            <option value="7">第8组数据</option>
+          </select>
+        </label>
+        <label class="wide">
+          规则覆盖
+          <textarea id="rulesText" spellcheck="false" placeholder="一行一条，例如：
+高=#e76f51
+中=#e9c46a
+低=#2a9d8f
+>=80=#e76f51
+60-79=#e9c46a
+包含:重点=#8a5cf6
+其他=#8d99ae"></textarea>
+        </label>
+      </div>
+      <p class="help">数据列可填 1-8 列。导入后会保存全部数据，填色使用哪一列由“填色使用”决定。</p>
+    </section>
+
+    <section>
+      <h2>数字填色方式</h2>
+      <div class="choice-row">
+        <label class="choice">
+          <input type="radio" name="numericFillType" value="gradient">
+          渐变填色
+        </label>
+        <label class="choice">
+          <input type="radio" name="numericFillType" value="buckets">
+          分段填色
+        </label>
+      </div>
+      <div class="grid" style="margin-top: 12px;">
+        <label>
+          高值颜色
+          <input id="gradientHighColor" type="color">
+        </label>
+        <label>
+          低值颜色
+          <input id="gradientLowColor" type="color">
+        </label>
+        <label>
+          渐变过程
+          <select id="gradientProcess">
+            <option value="linear">线性</option>
+            <option value="smooth">平滑</option>
+            <option value="stepped">分段</option>
+            <option value="high">强调高值</option>
+            <option value="low">强调低值</option>
+          </select>
+        </label>
+        <label>
+          渐变幅度
+          <input id="gradientIntensity" type="range" min="20" max="100" step="5">
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>分段颜色</h2>
+      <div class="grid">
+        <label>
+          分段数
+          <input id="bucketCount" type="number" min="2" max="12" step="1">
+        </label>
+        <label>
+          分段边界
+          <input id="bucketBoundaries" type="text" placeholder="留空等分；n段填n+1个端点，例如 0 1 2 4 8 16 50">
+        </label>
+      </div>
+      <div class="actions" style="justify-content:flex-start; margin: 12px 0;">
+        <button id="resetBucketColors" class="button" type="button">默认彩色</button>
+      </div>
+      <div id="bucketColors" class="bucket-colors"></div>
+      <div id="preview" class="preview"></div>
+    </section>
+
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script>
+    const ACTIVE_SCHEME_KEY = "china-prefecture-map-active-scheme-v1";
+    const SCHEME_CATALOG_KEY = "china-prefecture-map-schemes-v1";
+    const EXCEL_RULE_SETTINGS_STORAGE_PREFIX = "china-prefecture-map-excel-rule-settings-v1:";
+    const EXCEL_RULE_APPLY_REQUEST_PREFIX = "china-prefecture-map-excel-rule-apply-request-v1:";
+    const RANK_DATA_COLUMN_COUNT = 8;
+    const DEFAULT_BUCKET_COUNT = 7;
+    const DEFAULT_BUCKET_COLORS = ["#3151b7", "#2a84d2", "#27a9c2", "#2fa75f", "#d9c73d", "#ee8b2c", "#d84d3f"];
+    const DEFAULT_SETTINGS = {
+      mode: "auto",
+      valueColumn: "",
+      fillDataIndex: 0,
+      rulesText: "",
+      gradientHighColor: "#e76f51",
+      gradientLowColor: "#2a9d8f",
+      gradientProcess: "linear",
+      gradientIntensity: 100,
+      numericFillType: "buckets",
+      bucketCount: DEFAULT_BUCKET_COUNT,
+      bucketBoundaries: "",
+      bucketColors: [...DEFAULT_BUCKET_COLORS],
+      bucketLegendLabels: [],
+      bucketLegendDefaultLabels: []
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const controls = {
+      mode: $("mode"),
+      valueColumn: $("valueColumn"),
+      fillDataIndex: $("fillDataIndex"),
+      rulesText: $("rulesText"),
+      gradientHighColor: $("gradientHighColor"),
+      gradientLowColor: $("gradientLowColor"),
+      gradientProcess: $("gradientProcess"),
+      gradientIntensity: $("gradientIntensity"),
+      bucketCount: $("bucketCount"),
+      bucketBoundaries: $("bucketBoundaries")
+    };
+
+    function activeSchemeId() {
+      return localStorage.getItem(ACTIVE_SCHEME_KEY) || "default";
+    }
+
+    function schemeName() {
+      try {
+        const catalog = JSON.parse(localStorage.getItem(SCHEME_CATALOG_KEY) || "[]");
+        const active = catalog.find((item) => item?.id === activeSchemeId());
+        return active?.name || "默认方案";
+      } catch {
+        return "默认方案";
+      }
+    }
+
+    function storageKey() {
+      return `${EXCEL_RULE_SETTINGS_STORAGE_PREFIX}${activeSchemeId()}`;
+    }
+
+    function isHexColor(value) {
+      return /^#[0-9a-f]{6}$/i.test(String(value || ""));
+    }
+
+    function boundedInteger(value, min, max, fallback) {
+      const number = Math.floor(Number(value));
+      return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+    }
+
+    function normalizeBucketColors(colors, count) {
+      const source = Array.isArray(colors) ? colors : [];
+      return Array.from({ length: count }, (_, index) => {
+        const color = source[index] || DEFAULT_BUCKET_COLORS[index % DEFAULT_BUCKET_COLORS.length];
+        return isHexColor(color) ? color.toLowerCase() : DEFAULT_BUCKET_COLORS[index % DEFAULT_BUCKET_COLORS.length];
+      });
+    }
+
+    function sanitize(settings = {}, fallback = DEFAULT_SETTINGS) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const bucketCount = boundedInteger(source.bucketCount, 2, 12, fallback.bucketCount);
+      const modes = new Set(["auto", "numeric", "rules", "color", "single"]);
+      const processes = new Set(["linear", "smooth", "stepped", "high", "low"]);
+      return {
+        mode: modes.has(source.mode) ? source.mode : fallback.mode,
+        valueColumn: String(source.valueColumn ?? fallback.valueColumn ?? ""),
+        fillDataIndex: boundedInteger(source.fillDataIndex, 0, RANK_DATA_COLUMN_COUNT - 1, fallback.fillDataIndex),
+        rulesText: String(source.rulesText ?? fallback.rulesText ?? ""),
+        gradientHighColor: isHexColor(source.gradientHighColor) ? source.gradientHighColor.toLowerCase() : fallback.gradientHighColor,
+        gradientLowColor: isHexColor(source.gradientLowColor) ? source.gradientLowColor.toLowerCase() : fallback.gradientLowColor,
+        gradientProcess: processes.has(source.gradientProcess) ? source.gradientProcess : fallback.gradientProcess,
+        gradientIntensity: boundedInteger(source.gradientIntensity, 20, 100, fallback.gradientIntensity),
+        numericFillType: source.numericFillType === "gradient" ? "gradient" : "buckets",
+        bucketCount,
+        bucketBoundaries: String(source.bucketBoundaries ?? fallback.bucketBoundaries ?? ""),
+        bucketColors: normalizeBucketColors(source.bucketColors || fallback.bucketColors, bucketCount),
+        bucketLegendLabels: Array.isArray(source.bucketLegendLabels) ? source.bucketLegendLabels.map((item) => String(item ?? "")) : [],
+        bucketLegendDefaultLabels: Array.isArray(source.bucketLegendDefaultLabels) ? source.bucketLegendDefaultLabels.map((item) => String(item ?? "")) : []
+      };
+    }
+
+    function readSettings() {
+      try {
+        return sanitize(JSON.parse(localStorage.getItem(storageKey()) || "null") || DEFAULT_SETTINGS);
+      } catch {
+        return sanitize(DEFAULT_SETTINGS);
+      }
+    }
+
+    function writeSettings(settings) {
+      localStorage.setItem(storageKey(), JSON.stringify(sanitize(settings)));
+      localStorage.setItem(EXCEL_RULE_APPLY_REQUEST_PREFIX + activeSchemeId(), String(Date.now()));
+    }
+
+    function parseNumbers(text) {
+      return String(text || "")
+        .split(/[,，;；\s]+/)
+        .map((part) => Number(String(part).replace(/,/g, "")))
+        .filter(Number.isFinite);
+    }
+
+    function formatNumber(value) {
+      return Number.isInteger(value) ? String(value) : Number(value).toFixed(2).replace(/\.?0+$/, "");
+    }
+
+    function defaultLabels(settings) {
+      if (settings.bucketLegendDefaultLabels.length === settings.bucketCount + 1) {
+        return settings.bucketLegendDefaultLabels;
+      }
+      const endpoints = parseNumbers(settings.bucketBoundaries);
+      if (endpoints.length >= settings.bucketCount + 1) {
+        return endpoints.slice(0, settings.bucketCount + 1).map(formatNumber);
+      }
+      return Array.from({ length: settings.bucketCount + 1 }, (_, index) => {
+        const value = (index / settings.bucketCount) * 100;
+        return formatNumber(value);
+      });
+    }
+
+    function collectSettings() {
+      const count = boundedInteger(controls.bucketCount.value, 2, 12, DEFAULT_BUCKET_COUNT);
+      const labels = currentSettings.bucketLegendLabels.length === count + 1
+        ? currentSettings.bucketLegendLabels
+        : [];
+      return sanitize({
+        mode: controls.mode.value,
+        valueColumn: controls.valueColumn.value,
+        fillDataIndex: controls.fillDataIndex.value,
+        rulesText: controls.rulesText.value,
+        gradientHighColor: controls.gradientHighColor.value,
+        gradientLowColor: controls.gradientLowColor.value,
+        gradientProcess: controls.gradientProcess.value,
+        gradientIntensity: controls.gradientIntensity.value,
+        numericFillType: document.querySelector("input[name='numericFillType']:checked")?.value || "buckets",
+        bucketCount: count,
+        bucketBoundaries: controls.bucketBoundaries.value,
+        bucketColors: Array.from(document.querySelectorAll("[data-bucket-color]")).map((input) => input.value),
+        bucketLegendLabels: labels,
+        bucketLegendDefaultLabels: defaultLabels({ ...currentSettings, bucketCount: count, bucketBoundaries: controls.bucketBoundaries.value })
+      });
+    }
+
+    let currentSettings = readSettings();
+
+    function renderBucketColors(settings) {
+      const host = $("bucketColors");
+      host.innerHTML = "";
+      settings.bucketColors.forEach((color, index) => {
+        const label = document.createElement("label");
+        label.className = "bucket-color";
+        label.append(`第${index + 1}段`);
+        const input = document.createElement("input");
+        input.type = "color";
+        input.value = color;
+        input.dataset.bucketColor = String(index);
+        input.addEventListener("input", () => {
+          currentSettings = collectSettings();
+          renderPreview(currentSettings);
+        });
+        label.append(input);
+        host.append(label);
+      });
+    }
+
+    function renderPreview(settings) {
+      const preview = $("preview");
+      const colors = normalizeBucketColors(settings.bucketColors, settings.bucketCount);
+      const labels = settings.bucketLegendLabels.length === settings.bucketCount + 1
+        ? settings.bucketLegendLabels
+        : defaultLabels(settings);
+      preview.innerHTML = "";
+
+      const bar = document.createElement("div");
+      bar.className = "preview-bar";
+      bar.style.gridTemplateColumns = `repeat(${colors.length}, minmax(0, 1fr))`;
+      colors.forEach((color) => {
+        const segment = document.createElement("span");
+        segment.style.background = color;
+        bar.append(segment);
+      });
+
+      const labelRow = document.createElement("div");
+      labelRow.className = "preview-labels";
+      labels.forEach((text, index) => {
+        const item = document.createElement("span");
+        item.style.left = `${(index / (labels.length - 1)) * 100}%`;
+        item.textContent = text;
+        labelRow.append(item);
+      });
+
+      preview.append(bar, labelRow);
+    }
+
+    function fillForm(settings) {
+      currentSettings = sanitize(settings);
+      $("schemeName").textContent = `当前方案：${schemeName()}`;
+      controls.mode.value = currentSettings.mode;
+      controls.valueColumn.value = currentSettings.valueColumn;
+      controls.fillDataIndex.value = String(currentSettings.fillDataIndex);
+      controls.rulesText.value = currentSettings.rulesText;
+      controls.gradientHighColor.value = currentSettings.gradientHighColor;
+      controls.gradientLowColor.value = currentSettings.gradientLowColor;
+      controls.gradientProcess.value = currentSettings.gradientProcess;
+      controls.gradientIntensity.value = String(currentSettings.gradientIntensity);
+      controls.bucketCount.value = String(currentSettings.bucketCount);
+      controls.bucketBoundaries.value = currentSettings.bucketBoundaries;
+      document.querySelectorAll("input[name='numericFillType']").forEach((input) => {
+        input.checked = input.value === currentSettings.numericFillType;
+      });
+      renderBucketColors(currentSettings);
+      renderPreview(currentSettings);
+    }
+
+    function save() {
+      currentSettings = collectSettings();
+      writeSettings(currentSettings);
+      fillForm(currentSettings);
+      $("toast").textContent = "已保存。回到地图后会自动应用。";
+    }
+
+    Object.values(controls).forEach((control) => {
+      control.addEventListener("input", () => {
+        currentSettings = collectSettings();
+        if (control === controls.bucketCount) {
+          currentSettings.bucketLegendLabels = [];
+          currentSettings.bucketColors = normalizeBucketColors(currentSettings.bucketColors, currentSettings.bucketCount);
+          renderBucketColors(currentSettings);
+        }
+        renderPreview(currentSettings);
+      });
+      control.addEventListener("change", () => {
+        currentSettings = collectSettings();
+        if (control === controls.bucketCount || control === controls.bucketBoundaries) {
+          currentSettings.bucketLegendLabels = [];
+          currentSettings.bucketLegendDefaultLabels = defaultLabels(currentSettings);
+        }
+        renderPreview(currentSettings);
+      });
+    });
+
+    document.querySelectorAll("input[name='numericFillType']").forEach((input) => {
+      input.addEventListener("change", () => {
+        currentSettings = collectSettings();
+      });
+    });
+
+    $("saveButton").addEventListener("click", save);
+    $("resetButton").addEventListener("click", () => {
+      currentSettings = sanitize(DEFAULT_SETTINGS);
+      fillForm(currentSettings);
+      writeSettings(currentSettings);
+      $("toast").textContent = "已恢复默认并保存。";
+    });
+    $("resetBucketColors").addEventListener("click", () => {
+      currentSettings = collectSettings();
+      currentSettings.bucketColors = normalizeBucketColors(DEFAULT_BUCKET_COLORS, currentSettings.bucketCount);
+      renderBucketColors(currentSettings);
+      renderPreview(currentSettings);
+    });
+    $("backButton").addEventListener("click", () => {
+      location.href = "../china_prefecture_map.html";
+    });
+
+    fillForm(currentSettings);
+  </script>
+</body>
+</html>

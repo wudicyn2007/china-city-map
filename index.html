@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>地图项目主界面</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      color: #17202a;
+      background: #edf2f4;
+    }
+
+    body {
+      padding: 22px;
+    }
+
+    .page {
+      display: grid;
+      gap: 16px;
+      max-width: 1060px;
+      margin: 0 auto;
+    }
+
+    .top {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .muted {
+      margin-top: 5px;
+      color: #60737a;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .panel {
+      border: 1px solid rgba(24, 46, 56, 0.12);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 12px 32px rgba(39, 58, 68, 0.12);
+      padding: 16px;
+    }
+
+    .create-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #52636c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button {
+      height: 38px;
+      border: 1px solid #cbd8dc;
+      border-radius: 7px;
+      background: #fff;
+      color: #25333a;
+      font: inherit;
+    }
+
+    input,
+    select {
+      padding: 0 10px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 800;
+      padding: 0 14px;
+    }
+
+    .primary {
+      border-color: #2f7f83;
+      background: #2f7f83;
+      color: #fff;
+    }
+
+    .danger {
+      border-color: #c58f80;
+      color: #b1472f;
+    }
+
+    .api-toggle {
+      min-width: 150px;
+      border-color: #2f7f83;
+      color: #22666a;
+      background: #f7fbfb;
+    }
+
+    .api-toggle.disabled {
+      border-color: #c58f80;
+      color: #b1472f;
+      background: #fff7f4;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid #d6e2e6;
+      border-radius: 8px;
+      background: #f9fbfb;
+      padding: 12px;
+    }
+
+    .item-title {
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .item-meta {
+      margin-top: 3px;
+      color: #64757c;
+      font-size: 12px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .empty {
+      border: 1px dashed #bfd0d5;
+      border-radius: 8px;
+      color: #61757c;
+      padding: 18px;
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 14px;
+      }
+
+      .top,
+      .item {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .create-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="top">
+      <div>
+        <h1>地图项目主界面</h1>
+        <p class="muted">创建项目时先确定地图类型：全国地级市地图，或某个省份的县级地图。创建后只能打开对应类型。</p>
+      </div>
+      <button id="globalApiToggle" class="api-toggle" type="button"></button>
+    </header>
+
+    <section class="panel">
+      <div class="create-grid">
+        <label>
+          项目名称
+          <input id="projectName" type="text" placeholder="例如：浙江县级测试、全国人均GDP">
+        </label>
+        <label>
+          地图类型
+          <select id="projectType">
+            <option value="national">全国地级市地图</option>
+            <option value="province-county">省份县级地图</option>
+          </select>
+        </label>
+        <label>
+          省份
+          <select id="provinceSelect">
+          </select>
+        </label>
+        <button id="createButton" class="primary" type="button">创建</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>已有项目</h2>
+      <p class="muted">这里管理的是地图项目类型和入口；进入地图后再管理填色、Excel、榜单等具体内容。</p>
+      <div id="projectList" class="list" style="margin-top: 12px;"></div>
+    </section>
+  </main>
+
+  <script>
+    const PROJECT_KEY = "map-projects-v1";
+    const GLOBAL_API_DISABLED_KEY = "map-ai-global-disabled-v1";
+    const NATIONAL_SCHEME_CATALOG_KEY = "china-prefecture-map-schemes-v1";
+    const NATIONAL_ACTIVE_SCHEME_KEY = "china-prefecture-map-active-scheme-v1";
+    const NATIONAL_SCHEME_DATA_PREFIX = "china-prefecture-map-scheme-colors-v1:";
+    const PROVINCES = {
+      "110000": { name: "北京市" },
+      "120000": { name: "天津市" },
+      "130000": { name: "河北省" },
+      "140000": { name: "山西省" },
+      "150000": { name: "内蒙古自治区" },
+      "210000": { name: "辽宁省" },
+      "220000": { name: "吉林省" },
+      "230000": { name: "黑龙江省" },
+      "310000": { name: "上海市" },
+      "320000": { name: "江苏省" },
+      "330000": { name: "浙江省" },
+      "340000": { name: "安徽省" },
+      "350000": { name: "福建省" },
+      "360000": { name: "江西省" },
+      "370000": { name: "山东省" },
+      "410000": { name: "河南省" },
+      "420000": { name: "湖北省" },
+      "430000": { name: "湖南省" },
+      "440000": { name: "广东省" },
+      "450000": { name: "广西壮族自治区" },
+      "460000": { name: "海南省" },
+      "500000": { name: "重庆市" },
+      "510000": { name: "四川省" },
+      "520000": { name: "贵州省" },
+      "530000": { name: "云南省" },
+      "540000": { name: "西藏自治区" },
+      "610000": { name: "陕西省" },
+      "620000": { name: "甘肃省" },
+      "630000": { name: "青海省" },
+      "640000": { name: "宁夏回族自治区" },
+      "650000": { name: "新疆维吾尔自治区" },
+      "710000": { name: "台湾省" },
+      "810000": { name: "香港特别行政区" },
+      "820000": { name: "澳门特别行政区" }
+    };
+
+    const projectName = document.getElementById("projectName");
+    const projectType = document.getElementById("projectType");
+    const provinceSelect = document.getElementById("provinceSelect");
+    const projectList = document.getElementById("projectList");
+    const globalApiToggle = document.getElementById("globalApiToggle");
+
+    function readJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function writeJson(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function syncGlobalApiToggle() {
+      const disabled = localStorage.getItem(GLOBAL_API_DISABLED_KEY) === "1";
+      globalApiToggle.classList.toggle("disabled", disabled);
+      globalApiToggle.textContent = disabled ? "解除API禁用" : "禁用所有API";
+      globalApiToggle.title = disabled
+        ? "当前所有项目都不能调用 DeepSeek API，点击解除"
+        : "点击后所有项目都不能调用 DeepSeek API";
+    }
+
+    function makeId(prefix) {
+      if (window.crypto?.randomUUID) {
+        return `${prefix}-${window.crypto.randomUUID()}`;
+      }
+      return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function readProjects() {
+      return readJson(PROJECT_KEY, []).filter((project) => project && project.id && project.name && project.type);
+    }
+
+    function writeProjects(projects) {
+      writeJson(PROJECT_KEY, projects);
+    }
+
+    function populateProvinceSelect() {
+      provinceSelect.innerHTML = "";
+      Object.entries(PROVINCES).forEach(([adcode, province]) => {
+        const option = document.createElement("option");
+        option.value = adcode;
+        option.textContent = province.name;
+        provinceSelect.appendChild(option);
+      });
+      provinceSelect.value = "330000";
+    }
+
+    function migrateLegacyNationalSchemes() {
+      const catalog = readJson(NATIONAL_SCHEME_CATALOG_KEY, []);
+      const schemes = Array.isArray(catalog)
+        ? catalog.filter((scheme) => scheme?.id && scheme?.name)
+        : [];
+      if (!schemes.length) return;
+
+      const projects = readProjects();
+      const projectSchemeIds = new Set(
+        projects
+          .filter((project) => project.type === "national")
+          .map((project) => project.schemeId || project.id)
+      );
+      let changed = false;
+
+      schemes.forEach((scheme) => {
+        if (projectSchemeIds.has(scheme.id)) return;
+        projects.push({
+          id: makeId("map"),
+          name: String(scheme.name).trim() || "未命名全国地图",
+          type: "national",
+          province: "",
+          schemeId: scheme.id,
+          createdAt: Number(scheme.createdAt) || Date.now(),
+          updatedAt: Number(scheme.updatedAt) || Number(scheme.createdAt) || Date.now()
+        });
+        projectSchemeIds.add(scheme.id);
+        changed = true;
+      });
+
+      if (changed) {
+        writeProjects(projects);
+      }
+    }
+
+    function formatTime(value) {
+      const date = new Date(Number(value) || Date.now());
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function typeLabel(project) {
+      if (project.type === "national") return "全国地级市地图";
+      return `${PROVINCES[project.province]?.name || "省份"}县级地图`;
+    }
+
+    function ensureNationalScheme(project) {
+      const schemeId = project.schemeId || project.id;
+      const catalog = readJson(NATIONAL_SCHEME_CATALOG_KEY, []);
+      const cleanCatalog = Array.isArray(catalog) ? catalog.filter((scheme) => scheme?.id && scheme?.name) : [];
+      let scheme = cleanCatalog.find((item) => item.id === schemeId);
+      if (!scheme) {
+        scheme = {
+          id: schemeId,
+          name: project.name,
+          createdAt: project.createdAt || Date.now(),
+          updatedAt: Date.now()
+        };
+        cleanCatalog.push(scheme);
+      } else {
+        scheme.name = project.name;
+        scheme.updatedAt = Date.now();
+      }
+      localStorage.setItem(NATIONAL_SCHEME_CATALOG_KEY, JSON.stringify(cleanCatalog));
+      localStorage.setItem(NATIONAL_ACTIVE_SCHEME_KEY, schemeId);
+      if (!localStorage.getItem(`${NATIONAL_SCHEME_DATA_PREFIX}${schemeId}`) && schemeId === project.id) {
+        localStorage.setItem(`${NATIONAL_SCHEME_DATA_PREFIX}${schemeId}`, "{}");
+      }
+      project.schemeId = schemeId;
+    }
+
+    function openProject(projectId) {
+      const projects = readProjects();
+      const project = projects.find((item) => item.id === projectId);
+      if (!project) return;
+      project.updatedAt = Date.now();
+      if (project.type === "national") {
+        ensureNationalScheme(project);
+        writeProjects(projects);
+        location.href = `china_prefecture_map.html?project=${encodeURIComponent(project.id)}`;
+        return;
+      }
+      writeProjects(projects);
+      location.href = `province_county_map.html?province=${encodeURIComponent(project.province || "330000")}&project=${encodeURIComponent(project.id)}`;
+    }
+
+    function deleteProject(projectId) {
+      const projects = readProjects();
+      const project = projects.find((item) => item.id === projectId);
+      if (!project || !confirm(`删除项目“${project.name}”？`)) return;
+      const next = projects.filter((item) => item.id !== projectId);
+      writeProjects(next);
+      if (project.type === "province-county") {
+        const provinceCode = project.province || "330000";
+        localStorage.removeItem(`province-county-map-${provinceCode}-v1:${project.id}:colors`);
+        localStorage.removeItem(`province-county-map-${provinceCode}-v1:${project.id}:data`);
+        localStorage.removeItem(`province-county-map-${provinceCode}-v1:${project.id}:settings`);
+        localStorage.removeItem(`province-county-map-${provinceCode}-v1:${project.id}:hide-close-buttons`);
+        if (provinceCode === "330000") {
+          localStorage.removeItem(`province-county-map-zhejiang-v1:${project.id}:colors`);
+          localStorage.removeItem(`province-county-map-zhejiang-v1:${project.id}:data`);
+          localStorage.removeItem(`province-county-map-zhejiang-v1:${project.id}:settings`);
+          localStorage.removeItem(`province-county-map-zhejiang-v1:${project.id}:hide-close-buttons`);
+        }
+      }
+      localStorage.removeItem(`map-ai-settings-v1:${project.id}`);
+      localStorage.removeItem(`map-ai-history-v1:${project.id}`);
+      renderProjects();
+    }
+
+    function renameProject(projectId) {
+      const projects = readProjects();
+      const project = projects.find((item) => item.id === projectId);
+      if (!project) return;
+      const nextName = prompt("输入新的项目名称", project.name);
+      if (nextName === null) return;
+      const trimmed = nextName.trim();
+      if (!trimmed) return;
+      project.name = trimmed.slice(0, 48);
+      project.updatedAt = Date.now();
+      if (project.type === "national") {
+        ensureNationalScheme(project);
+      }
+      writeProjects(projects);
+      renderProjects();
+    }
+
+    function renderProjects() {
+      const projects = readProjects().sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      projectList.innerHTML = "";
+      if (!projects.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "还没有项目。先在上方选择地图类型并创建一个。";
+        projectList.appendChild(empty);
+        return;
+      }
+      projects.forEach((project) => {
+        const item = document.createElement("div");
+        item.className = "item";
+
+        const main = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "item-title";
+        title.textContent = project.name;
+        const meta = document.createElement("div");
+        meta.className = "item-meta";
+        meta.textContent = `${typeLabel(project)} · 创建 ${formatTime(project.createdAt)} · 更新 ${formatTime(project.updatedAt)}`;
+        main.appendChild(title);
+        main.appendChild(meta);
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        const openButton = document.createElement("button");
+        openButton.className = "primary";
+        openButton.type = "button";
+        openButton.textContent = "打开";
+        openButton.addEventListener("click", () => openProject(project.id));
+
+        const renameButton = document.createElement("button");
+        renameButton.type = "button";
+        renameButton.textContent = "重命名";
+        renameButton.addEventListener("click", () => renameProject(project.id));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "danger";
+        deleteButton.type = "button";
+        deleteButton.textContent = "删除";
+        deleteButton.addEventListener("click", () => deleteProject(project.id));
+
+        actions.appendChild(openButton);
+        actions.appendChild(renameButton);
+        actions.appendChild(deleteButton);
+        item.appendChild(main);
+        item.appendChild(actions);
+        projectList.appendChild(item);
+      });
+    }
+
+    globalApiToggle.addEventListener("click", () => {
+      const disabled = localStorage.getItem(GLOBAL_API_DISABLED_KEY) === "1";
+      localStorage.setItem(GLOBAL_API_DISABLED_KEY, disabled ? "0" : "1");
+      syncGlobalApiToggle();
+    });
+
+    document.getElementById("createButton").addEventListener("click", () => {
+      const name = projectName.value.trim();
+      if (!name) {
+        alert("请先输入项目名称。");
+        projectName.focus();
+        return;
+      }
+      const now = Date.now();
+      const project = {
+        id: makeId("map"),
+        name: name.slice(0, 48),
+        type: projectType.value,
+        province: projectType.value === "province-county" ? provinceSelect.value : "",
+        createdAt: now,
+        updatedAt: now
+      };
+      const projects = readProjects();
+      projects.push(project);
+      if (project.type === "national") {
+        ensureNationalScheme(project);
+      }
+      writeProjects(projects);
+      projectName.value = "";
+      renderProjects();
+      openProject(project.id);
+    });
+
+    projectType.addEventListener("change", () => {
+      provinceSelect.disabled = projectType.value !== "province-county";
+    });
+
+    syncGlobalApiToggle();
+    populateProvinceSelect();
+    migrateLegacyNationalSchemes();
+    provinceSelect.disabled = projectType.value !== "province-county";
+    renderProjects();
+  </script>
+</body>
+</html>

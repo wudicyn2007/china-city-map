@@ -1,0 +1,4224 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浙江省县级填色地图</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body,
+    #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: hidden;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      color: #1c2a30;
+      background: #eef4f4;
+    }
+
+    #map {
+      background: #f8fbfb;
+    }
+
+    .topbar,
+    .panel,
+    .status,
+    .toolbar-open {
+      position: absolute;
+      z-index: 900;
+      border: 1px solid rgba(25, 58, 65, 0.14);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 14px 36px rgba(34, 57, 66, 0.16);
+    }
+
+    .topbar {
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 3px;
+      min-width: 190px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.15;
+    }
+
+    .brand p {
+      margin: 0;
+      color: #64757c;
+      font-size: 12px;
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .button,
+    .field,
+    .select,
+    .number-input {
+      height: 36px;
+      border: 1px solid #cbd9de;
+      border-radius: 8px;
+      background: #fff;
+      color: #25343b;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      padding: 0 12px;
+    }
+
+    .button.primary,
+    .button.active {
+      border-color: #2f7f83;
+      background: #2f7f83;
+      color: #fff;
+    }
+
+    .button.danger {
+      border-color: #c58f80;
+      color: #b1472f;
+    }
+
+    .panel-close {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      width: 28px;
+      height: 28px;
+      border: 1px solid #cbd8dc;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.96);
+      color: #62767d;
+      box-shadow: 0 8px 20px rgba(39, 58, 68, 0.16);
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .close-hidden .floating-close {
+      display: none !important;
+    }
+
+    .draggable {
+      cursor: grab;
+    }
+
+    .dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    .field {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      color: #53666e;
+      white-space: nowrap;
+    }
+
+    .field input[type="color"] {
+      width: 36px;
+      height: 24px;
+      border: 1px solid #9fb2b8;
+      padding: 0;
+      background: transparent;
+    }
+
+    .select,
+    .number-input {
+      padding: 0 9px;
+    }
+
+    .number-input {
+      width: 82px;
+    }
+
+    .palette {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 36px;
+      border: 1px solid #cbd9de;
+      border-radius: 8px;
+      background: #fff;
+      padding: 0 8px;
+    }
+
+    .swatch {
+      width: 23px;
+      height: 23px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(25, 46, 55, 0.28);
+      cursor: pointer;
+    }
+
+    .swatch.active {
+      box-shadow: 0 0 0 2px #2f7f83;
+    }
+
+    .toolbar-open {
+      top: 12px;
+      left: 12px;
+      border-radius: 8px;
+      padding: 0 12px;
+    }
+
+    .fine-zoom {
+      position: absolute;
+      z-index: 880;
+      top: 72px;
+      left: 14px;
+      display: grid;
+      grid-template-columns: 36px;
+      gap: 4px;
+      padding-top: 20px;
+    }
+
+    .fine-zoom.hidden {
+      display: none;
+    }
+
+    .fine-zoom button {
+      width: 36px;
+      height: 32px;
+      border: 1px solid #cbd8dc;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #17202a;
+      box-shadow: 0 8px 22px rgba(39, 58, 68, 0.12);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .fine-zoom button[data-zoom-step="fine-in"],
+    .fine-zoom button[data-zoom-step="fine-out"] {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .fine-zoom button:hover {
+      border-color: #78929a;
+      background: #fff;
+    }
+
+    .fine-zoom .fine-zoom-close {
+      position: absolute;
+      top: -4px;
+      right: -10px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 16px;
+      line-height: 18px;
+      box-shadow: 0 6px 16px rgba(39, 58, 68, 0.16);
+    }
+
+    .panel {
+      right: 14px;
+      top: 88px;
+      width: min(380px, calc(100vw - 28px));
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 8px 12px;
+      font-size: 14px;
+    }
+
+    .info-grid .label {
+      color: #65767c;
+    }
+
+    .info-grid .value {
+      text-align: right;
+      color: #25343b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status {
+      left: 14px;
+      bottom: 14px;
+      display: grid;
+      gap: 8px;
+      width: min(470px, calc(100vw - 28px));
+      border-radius: 10px;
+      padding: 12px;
+      color: #40545d;
+      font-size: 13px;
+    }
+
+    .progress {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dbe6e8;
+    }
+
+    .progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #2f7f83, #d87358);
+      transition: width 0.18s ease;
+    }
+
+    .legend {
+      --legend-bar-height: 22px;
+      --legend-label-font-size: 13px;
+      position: absolute;
+      z-index: 880;
+      right: 14px;
+      bottom: 14px;
+      width: min(500px, calc(100vw - 28px));
+      padding: 0 28px 26px 0;
+      pointer-events: auto;
+    }
+
+    .legend-bar {
+      display: grid;
+      height: var(--legend-bar-height);
+      overflow: hidden;
+      border: 1px solid #cbd8dc;
+      border-radius: 5px;
+      background: #eef4f4;
+    }
+
+    .legend-labels {
+      position: relative;
+      height: 28px;
+      color: #2f4f95;
+      font-size: var(--legend-label-font-size);
+      font-weight: 800;
+    }
+
+    .legend-labels span {
+      position: absolute;
+      top: 3px;
+      width: max-content;
+      max-width: 86px;
+      text-align: center;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .legend-labels span::before {
+      position: absolute;
+      top: calc(0px - var(--legend-bar-height) - 3px);
+      left: 50%;
+      width: 1px;
+      height: var(--legend-bar-height);
+      background: rgba(16, 35, 45, 0.45);
+      content: "";
+    }
+
+    .legend-labels span:first-child {
+      transform: translateX(0);
+    }
+
+    .legend-labels span:first-child::before {
+      left: 0;
+    }
+
+    .legend-labels span:last-child {
+      transform: translateX(-100%);
+    }
+
+    .legend-labels span:last-child::before {
+      left: 100%;
+    }
+
+    .report {
+      position: absolute;
+      z-index: 930;
+      left: 50%;
+      top: 50%;
+      width: min(760px, calc(100vw - 32px));
+      max-height: min(680px, calc(100vh - 32px));
+      overflow: auto;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(25, 58, 65, 0.14);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 18px 46px rgba(34, 57, 66, 0.2);
+      padding: 14px;
+    }
+
+    .report h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .playback-panel {
+      position: absolute;
+      z-index: 925;
+      left: 50%;
+      bottom: 16px;
+      display: grid;
+      width: min(760px, calc(100% - 28px));
+      gap: 10px;
+      padding: 12px 42px 14px 14px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(25, 58, 65, 0.14);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 16px 42px rgba(34, 57, 66, 0.18);
+      font-size: 13px;
+    }
+
+    .playback-panel.is-dragged {
+      right: auto;
+      bottom: auto;
+      transform: none;
+    }
+
+    .playback-panel.dragging {
+      user-select: none;
+    }
+
+    .playback-title {
+      color: #17202a;
+      cursor: move;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    .playback-controls {
+      display: grid;
+      grid-template-columns: auto auto minmax(150px, 1fr) auto auto auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .playback-controls input[type="range"] {
+      width: 100%;
+      accent-color: #2f7f83;
+    }
+
+    .playback-count {
+      color: #53666e;
+      white-space: nowrap;
+    }
+
+    .playback-speed {
+      width: 94px;
+      height: 34px;
+      border: 1px solid #cbd8dc;
+      border-radius: 7px;
+      background: #fff;
+      color: #25333a;
+      font: inherit;
+      padding: 0 8px;
+    }
+
+    .playback-direction {
+      width: 92px;
+    }
+
+
+    .animation-settings-panel {
+      position: absolute;
+      z-index: 930;
+      right: 24px;
+      bottom: 116px;
+      display: grid;
+      width: min(420px, calc(100vw - 28px));
+      gap: 12px;
+      padding: 14px 42px 16px 14px;
+      border: 1px solid #dbe5e8;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 16px 46px rgba(32, 52, 62, 0.14);
+      backdrop-filter: blur(8px);
+      font-size: 13px;
+    }
+
+    .animation-settings-title {
+      color: #17202a;
+      cursor: move;
+      font-weight: 800;
+      user-select: none;
+    }
+
+    .animation-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .animation-settings-field {
+      display: grid;
+      gap: 5px;
+      color: #52636c;
+      font-weight: 700;
+    }
+
+    .animation-settings-field input,
+    .animation-settings-field select {
+      width: 100%;
+      height: 34px;
+      border: 1px solid #cbd8dc;
+      border-radius: 7px;
+      background: #fff;
+      color: #25333a;
+      font: inherit;
+      padding: 0 8px;
+    }
+
+    .animation-settings-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .playback-animation-path {
+      pointer-events: none;
+      transform-box: fill-box;
+      transform-origin: center;
+      vector-effect: non-scaling-stroke;
+      animation-duration: var(--playback-anim-duration, 650ms);
+      animation-timing-function: var(--playback-anim-easing, ease-out);
+      animation-fill-mode: both;
+      will-change: transform, opacity, filter;
+    }
+
+    .playback-animation-outline {
+      animation-name: playbackOutlinePulse;
+    }
+
+    .playback-animation-pop {
+      animation-name: playbackPopIn;
+    }
+
+    .playback-animation-fly {
+      animation-name: playbackFlyIn;
+    }
+
+    .playback-animation-fly-left,
+    .playback-animation-fly-right,
+    .playback-animation-fly-top,
+    .playback-animation-fly-bottom {
+      animation-name: playbackStageFlyIn;
+    }
+
+    .playback-animation-flash {
+      animation-name: playbackColorFlash;
+    }
+
+    .playback-animation-halo {
+      animation-name: playbackHaloPulse;
+      filter: drop-shadow(0 0 8px var(--playback-anim-color, #e07b51));
+    }
+
+    .playback-animation-draw {
+      animation-name: playbackDrawOutline;
+      stroke-dasharray: var(--playback-anim-dash, 260);
+      stroke-dashoffset: var(--playback-anim-dash, 260);
+    }
+
+    .playback-animation-drop {
+      animation-name: playbackDropLand;
+    }
+
+    @keyframes playbackOutlinePulse {
+      0% { opacity: 0; stroke-dashoffset: 34; }
+      22% { opacity: 1; stroke-dashoffset: 0; }
+      72% { opacity: 0.9; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes playbackPopIn {
+      0% { opacity: 0; transform: scale(0.35); }
+      62% { opacity: 1; transform: scale(var(--playback-anim-scale, 1.18)); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+
+    @keyframes playbackFlyIn {
+      0% { opacity: 0; transform: translate(var(--playback-anim-x, 0px), var(--playback-anim-y, 0px)) scale(var(--playback-anim-scale, 1.18)); }
+      72% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(0, 0) scale(1); }
+    }
+
+    @keyframes playbackStageFlyIn {
+      0% {
+        opacity: 0;
+        transform: translate(var(--playback-anim-stage-x, 0px), var(--playback-anim-stage-y, 0px)) scale(var(--playback-anim-scale, 1.18));
+        filter: saturate(1.2) brightness(1.08);
+      }
+      66% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+        filter: saturate(1.25) brightness(1.05);
+      }
+      82% {
+        opacity: 1;
+        transform: translate(var(--playback-anim-bounce-x, 0px), var(--playback-anim-bounce-y, 0px)) scale(1.025);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(0, 0) scale(1);
+        filter: saturate(1);
+      }
+    }
+
+    @keyframes playbackColorFlash {
+      0% { opacity: 0; filter: saturate(1); }
+      30% { opacity: 1; filter: saturate(1.7) brightness(1.08); }
+      100% { opacity: 0; filter: saturate(1); }
+    }
+
+    @keyframes playbackHaloPulse {
+      0% { opacity: 0; transform: scale(0.92); filter: drop-shadow(0 0 0 var(--playback-anim-color, #e07b51)); }
+      38% { opacity: 1; transform: scale(var(--playback-anim-scale, 1.18)); filter: drop-shadow(0 0 14px var(--playback-anim-color, #e07b51)); }
+      72% { opacity: 0.95; transform: scale(1.03); filter: drop-shadow(0 0 8px var(--playback-anim-color, #e07b51)); }
+      100% { opacity: 0; transform: scale(1); filter: drop-shadow(0 0 0 var(--playback-anim-color, #e07b51)); }
+    }
+
+    @keyframes playbackDrawOutline {
+      0% { opacity: 0; stroke-dashoffset: var(--playback-anim-dash, 260); }
+      18% { opacity: 1; }
+      74% { opacity: 1; stroke-dashoffset: 0; }
+      100% { opacity: 0; stroke-dashoffset: 0; }
+    }
+
+    @keyframes playbackDropLand {
+      0% {
+        opacity: 0;
+        transform: translate(var(--playback-anim-x, 0px), var(--playback-anim-y, -180px)) scale(0.72);
+        filter: brightness(1.12);
+      }
+      58% { opacity: 1; transform: translate(0, 0) scale(var(--playback-anim-scale, 1.18)); }
+      76% { opacity: 1; transform: translate(0, -8px) scale(0.98); }
+      100% { opacity: 0; transform: translate(0, 0) scale(1); filter: brightness(1); }
+    }
+    .rank-header-note {
+      display: none;
+      padding: 7px 8px;
+      border: 1px solid #dbe5e8;
+      border-radius: 7px;
+      background: #f8fbfb;
+      color: #40515a;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .rank-header-note.visible {
+      display: block;
+    }
+
+    .rank-panel {
+      position: absolute;
+      z-index: 925;
+      top: 86px;
+      right: 14px;
+      display: grid;
+      width: fit-content;
+      max-width: calc(100vw - 28px);
+      min-width: 260px;
+      gap: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      font-size: 13px;
+      --rank-row-odd: #d8f0e3;
+      --rank-row-even: #f7fcf9;
+      --rank-grid-color: #6aa183;
+    }
+
+    .rank-panel .panel-close {
+      top: -13px;
+      right: -13px;
+      box-shadow: 0 3px 10px rgba(36, 54, 64, 0.16);
+    }
+
+    .rank-panel .rank-header-note.visible {
+      margin-bottom: 8px;
+    }
+
+    .rank-panel.is-dragged {
+      right: auto;
+      bottom: auto;
+      transform: none;
+    }
+
+    .rank-panel.dragging {
+      user-select: none;
+    }
+
+    .rank-table {
+      border: 1px solid var(--rank-grid-color);
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 8px;
+      font-size: 12px;
+      table-layout: fixed;
+    }
+
+    .rank-table thead {
+      cursor: move;
+      user-select: none;
+    }
+
+    .rank-table th,
+    .rank-table td {
+      border-right: 1px solid rgba(53, 119, 84, 0.45);
+      border-bottom: 1px solid rgba(53, 119, 84, 0.45);
+      max-width: 0;
+      padding: 7px 8px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rank-table th {
+      background: #1f6b46;
+      color: #fff;
+    }
+
+    .rank-table th:last-child,
+    .rank-table td:last-child {
+      border-right: 0;
+    }
+
+    .rank-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .rank-table tbody tr:nth-child(odd) td {
+      background: var(--rank-row-odd);
+    }
+
+    .rank-table tbody tr:nth-child(even) td {
+      background: var(--rank-row-even);
+    }
+
+    .rank-empty {
+      padding: 8px 10px;
+      border: 1px solid rgba(24, 46, 56, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.8);
+      color: #687982;
+      font-size: 12px;
+    }
+
+    .rank-settings-panel {
+      position: absolute;
+      z-index: 925;
+      right: 16px;
+      top: 100px;
+      width: min(760px, calc(100vw - 32px));
+      max-height: min(760px, calc(100vh - 120px));
+      overflow: auto;
+      border: 1px solid rgba(25, 58, 65, 0.14);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 16px 42px rgba(34, 57, 66, 0.18);
+      padding: 14px;
+    }
+
+    .rank-settings-title {
+      margin-bottom: 10px;
+      color: #17202a;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .rank-settings-grid,
+    .rank-column-title-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px 12px;
+    }
+
+    .rank-settings-section-title {
+      margin: 14px 0 8px;
+      color: #52636c;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .rank-settings-field {
+      display: grid;
+      gap: 5px;
+      color: #52636c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .rank-settings-field input,
+    .rank-settings-field select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid #cbd8dc;
+      border-radius: 7px;
+      background: #fff;
+      color: #25333a;
+      font: inherit;
+      padding: 0 9px;
+    }
+
+    .rank-settings-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    .settings-panel {
+      position: absolute;
+      z-index: 925;
+      left: 18px;
+      top: 88px;
+      width: min(430px, calc(100vw - 36px));
+      max-height: min(760px, calc(100vh - 120px));
+      overflow: auto;
+      border: 1px solid rgba(25, 58, 65, 0.14);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 16px 42px rgba(34, 57, 66, 0.18);
+      padding: 14px;
+    }
+
+    .settings-panel h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .settings-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .settings-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .settings-field {
+      display: grid;
+      gap: 5px;
+      color: #52636c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .settings-field input,
+    .settings-field select,
+    .settings-field textarea {
+      width: 100%;
+      border: 1px solid #cbd8dc;
+      border-radius: 7px;
+      background: #fff;
+      color: #25333a;
+      font: inherit;
+    }
+
+    .settings-field input,
+    .settings-field select {
+      height: 36px;
+      padding: 0 9px;
+    }
+
+    .settings-field textarea {
+      min-height: 110px;
+      padding: 8px 9px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 8px;
+    }
+
+    .color-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #d5e1e5;
+      border-radius: 7px;
+      background: #f9fbfb;
+      padding: 7px;
+      color: #52636c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .color-row input[type="color"] {
+      width: 100%;
+      height: 28px;
+      padding: 0;
+    }
+
+    .setting-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #dce7e9;
+      padding: 7px 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #eff5f5;
+      font-weight: 800;
+    }
+
+    .hidden,
+    .hidden-file {
+      display: none !important;
+    }
+
+    .leaflet-tooltip.county-tooltip {
+      border: 1px solid rgba(17, 102, 109, 0.12);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #17202a;
+      box-shadow: 0 6px 18px rgba(39, 58, 68, 0.14);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .brand p {
+        white-space: normal;
+      }
+
+      .panel {
+        top: 160px;
+      }
+
+      .playback-controls {
+        grid-template-columns: auto auto 1fr;
+      }
+
+      .playback-speed,
+      .playback-count {
+        grid-column: span 1;
+      }
+
+      .rank-settings-grid,
+      .rank-column-title-fields {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="fine-zoom" aria-label="地图缩放">
+    <button id="fineZoomClose" class="panel-close floating-close fine-zoom-close" title="隐藏缩放按钮" type="button" aria-label="隐藏缩放按钮">×</button>
+    <button data-zoom-step="in" type="button" title="放大">+</button>
+    <button data-zoom-step="fine-in" type="button" title="细微放大">+细</button>
+    <button data-zoom-step="fine-out" type="button" title="细微缩小">-细</button>
+    <button data-zoom-step="out" type="button" title="缩小">-</button>
+  </div>
+
+  <section id="topbar" class="topbar">
+    <div class="brand">
+      <h1 id="pageTitle">浙江省县级填色地图</h1>
+      <p>县级行政区边界；可手动填色，也可导入 Excel 自动填色</p>
+    </div>
+
+    <div class="controls">
+      <button class="button active" data-mode="select" type="button">选择</button>
+      <button class="button" data-mode="fill" type="button">填色</button>
+      <button class="button" data-mode="erase" type="button">擦除</button>
+      <label class="field">颜色 <input id="colorPicker" type="color" value="#e9a66a"></label>
+      <div id="palette" class="palette" aria-label="常用颜色"></div>
+      <label class="field"><input id="cityToggle" type="checkbox" checked>市界</label>
+      <label class="field"><input id="countyToggle" type="checkbox" checked>县界</label>
+      <select id="excelDataColumn" class="select" title="Excel 填色使用的数据列">
+        <option value="1">数据1填色</option>
+        <option value="2">数据2填色</option>
+        <option value="3">数据3填色</option>
+        <option value="4">数据4填色</option>
+        <option value="5">数据5填色</option>
+        <option value="6">数据6填色</option>
+        <option value="7">数据7填色</option>
+        <option value="8">数据8填色</option>
+      </select>
+      <select id="numericMode" class="select" title="数字自动填色方式">
+        <option value="bucket">分段</option>
+        <option value="gradient">渐变</option>
+      </select>
+      <input id="bucketCount" class="number-input" type="number" min="2" max="12" step="1" value="7" title="分段数量">
+      <button id="fitButton" class="button primary" type="button">适配</button>
+      <button id="resetFloatingButton" class="button" type="button">复位</button>
+      <button id="lockFloatingButton" class="button" type="button">锁定</button>
+      <button id="closeButtonsToggle" class="button" type="button">隐藏×</button>
+      <button id="zoomPanelToggle" class="button active" type="button" title="显示或隐藏左侧缩放按钮">缩放</button>
+      <button id="mainHomeButton" class="button" type="button">主界面</button>
+      <button id="rulesButton" class="button" type="button">规则</button>
+      <button id="legendLabelButton" class="button" type="button">色条数字</button>
+      <button id="excelButton" class="button" type="button">Excel</button>
+      <button id="rankButton" class="button" type="button">榜单</button>
+      <button id="rankSettingsButton" class="button" type="button">榜单设置</button>
+      <button id="animationSettingsButton" class="button" type="button">动画</button>
+      <button id="playbackButton" class="button" type="button">播放</button>
+      <button id="reportButton" class="button hidden" type="button">匹配</button>
+      <button id="exportButton" class="button" type="button">导出</button>
+      <button id="importButton" class="button" type="button">导入</button>
+      <button id="clearButton" class="button danger" type="button">清空</button>
+      <button id="toolbarClose" class="button" type="button">×</button>
+      <input id="excelFile" class="hidden-file" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+      <input id="importFile" class="hidden-file" type="file" accept=".json,application/json">
+    </div>
+  </section>
+
+  <button id="toolbarOpen" class="toolbar-open button hidden" type="button">工具</button>
+
+  <section id="infoPanel" class="panel hidden">
+    <button id="infoClose" class="panel-close floating-close" type="button" aria-label="关闭信息">×</button>
+    <h2 id="infoTitle">县级行政区</h2>
+    <div class="info-grid">
+      <div class="label">层级</div><div id="infoLevel" class="value">县界</div>
+      <div class="label">代码</div><div id="infoCode" class="value">-</div>
+      <div class="label">所属</div><div id="infoParent" class="value">-</div>
+      <div class="label">颜色</div><div id="infoColor" class="value">-</div>
+      <div class="label">数据1</div><div id="infoData1" class="value">-</div>
+      <div class="label">数据2</div><div id="infoData2" class="value">-</div>
+      <div class="label">数据3</div><div id="infoData3" class="value">-</div>
+      <div class="label">数据4</div><div id="infoData4" class="value">-</div>
+      <div class="label">数据5</div><div id="infoData5" class="value">-</div>
+      <div class="label">数据6</div><div id="infoData6" class="value">-</div>
+      <div class="label">数据7</div><div id="infoData7" class="value">-</div>
+      <div class="label">数据8</div><div id="infoData8" class="value">-</div>
+    </div>
+  </section>
+
+  <section id="legend" class="legend hidden">
+    <button id="legendClose" class="panel-close floating-close" type="button" aria-label="关闭色条">×</button>
+    <div id="legendBar" class="legend-bar"></div>
+    <div id="legendLabels" class="legend-labels"></div>
+  </section>
+
+  <section id="rulesPanel" class="settings-panel hidden">
+    <button id="rulesClose" class="panel-close floating-close" type="button" aria-label="关闭规则">×</button>
+    <h2>Excel 填色规则</h2>
+    <div class="settings-grid two">
+      <label class="settings-field">
+        填色数据
+        <select id="ruleExcelDataColumn">
+          <option value="1">数据1</option>
+          <option value="2">数据2</option>
+          <option value="3">数据3</option>
+          <option value="4">数据4</option>
+          <option value="5">数据5</option>
+          <option value="6">数据6</option>
+          <option value="7">数据7</option>
+          <option value="8">数据8</option>
+        </select>
+      </label>
+      <label class="settings-field">
+        区域名列
+        <input id="ruleImportNameColumn" type="text" maxlength="4" placeholder="默认 A">
+      </label>
+      <label class="settings-field">
+        数据1列
+        <input id="ruleImportData1Column" type="text" maxlength="4" placeholder="默认 B">
+      </label>
+      <label class="settings-field">
+        数据2列
+        <input id="ruleImportData2Column" type="text" maxlength="4" placeholder="默认 C">
+      </label>
+      <label class="settings-field">
+        数据3列
+        <input id="ruleImportData3Column" type="text" maxlength="4" placeholder="默认 D">
+      </label>
+      <label class="settings-field">
+        数据4列
+        <input id="ruleImportData4Column" type="text" maxlength="4" placeholder="默认 E">
+      </label>
+      <label class="settings-field">
+        数据5列
+        <input id="ruleImportData5Column" type="text" maxlength="4" placeholder="默认 F">
+      </label>
+      <label class="settings-field">
+        数据6列
+        <input id="ruleImportData6Column" type="text" maxlength="4" placeholder="默认 G">
+      </label>
+      <label class="settings-field">
+        数据7列
+        <input id="ruleImportData7Column" type="text" maxlength="4" placeholder="默认 H">
+      </label>
+      <label class="settings-field">
+        数据8列
+        <input id="ruleImportData8Column" type="text" maxlength="4" placeholder="默认 I">
+      </label>
+      <label class="settings-field">
+        数字填色
+        <select id="ruleNumericMode">
+          <option value="bucket">分段填色</option>
+          <option value="gradient">渐变填色</option>
+        </select>
+      </label>
+      <label class="settings-field">
+        分段数
+        <input id="ruleBucketCount" type="number" min="2" max="12" step="1">
+      </label>
+      <label class="settings-field">
+        分段边界
+        <input id="ruleBucketBoundaries" type="text" placeholder="留空等分；也可填 0 10 20 50">
+      </label>
+      <label class="settings-field">
+        低值颜色
+        <input id="ruleGradientLowColor" type="color">
+      </label>
+      <label class="settings-field">
+        高值颜色
+        <input id="ruleGradientHighColor" type="color">
+      </label>
+    </div>
+    <label class="settings-field" style="margin-top: 10px;">
+      规则覆盖
+      <textarea id="ruleText" spellcheck="false" placeholder="一行一条，例如：
+>=80=#d84d3f
+60-80=#e8953e
+低=#4d8bd4
+其他=#a0a8ad"></textarea>
+    </label>
+    <div style="margin-top: 10px; color: #52636c; font-size: 13px; font-weight: 800;">分段颜色</div>
+    <div id="ruleBucketColors" class="color-grid" style="margin-top: 8px;"></div>
+    <div class="setting-actions">
+      <button id="resetBucketColorsButton" class="button" type="button">默认彩色</button>
+      <button id="saveRulesButton" class="button primary" type="button">保存并应用</button>
+    </div>
+  </section>
+
+  <section id="legendLabelPanel" class="settings-panel hidden" style="left: 470px;">
+    <button id="legendLabelClose" class="panel-close floating-close" type="button" aria-label="关闭色条数字">×</button>
+    <h2>色条数字显示</h2>
+    <p style="margin: 0 0 10px; color: #65767c; font-size: 13px;">这里只改色条下方显示文字，不改变填色边界和颜色。</p>
+    <div class="settings-grid">
+      <label class="settings-field">色条宽度<input id="legendBarWidth" type="number" min="180" max="1200" step="10"></label>
+      <label class="settings-field">色条高度<input id="legendBarHeight" type="number" min="8" max="80" step="1"></label>
+      <label class="settings-field">数字大小<input id="legendLabelFontSize" type="number" min="8" max="48" step="1"></label>
+    </div>
+    <div id="legendLabelFields" class="settings-grid"></div>
+    <div class="setting-actions">
+      <button id="resetLegendLabelsButton" class="button" type="button">恢复默认</button>
+      <button id="saveLegendLabelsButton" class="button primary" type="button">保存显示</button>
+    </div>
+  </section>
+
+  <section id="statusPanel" class="status">
+    <button id="statusClose" class="panel-close floating-close" type="button" aria-label="关闭状态">×</button>
+    <div id="statusText">准备加载浙江省县级边界...</div>
+    <div class="progress"><span id="progressFill"></span></div>
+  </section>
+
+  <section id="reportPanel" class="report hidden">
+    <div class="controls" style="justify-content: space-between; margin-bottom: 8px;">
+      <h2>Excel 匹配情况</h2>
+      <button id="reportClose" class="button panel-close floating-close" type="button">×</button>
+    </div>
+    <div id="reportSummary" style="margin-bottom: 8px; color: #53666e;"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>行号</th>
+          <th>导入名称</th>
+          <th>匹配结果</th>
+          <th>数据1</th>
+          <th>数据2</th>
+          <th>数据3</th>
+          <th>数据4</th>
+          <th>数据5</th>
+          <th>数据6</th>
+          <th>数据7</th>
+          <th>数据8</th>
+        </tr>
+      </thead>
+      <tbody id="reportBody"></tbody>
+    </table>
+  </section>
+
+  <section id="playbackPanel" class="playback-panel hidden">
+    <button id="playbackClose" class="panel-close floating-close" type="button" aria-label="关闭播放">×</button>
+    <div class="playback-title">数据填色播放</div>
+    <div class="playback-controls">
+      <button id="playButton" class="button primary" type="button">播放</button>
+      <button id="resetPlaybackButton" class="button" type="button">归零</button>
+      <input id="playbackRange" type="range" min="0" max="0" value="0" step="1">
+      <span id="playbackCount" class="playback-count">0 / 0</span>
+      <select id="playbackDirection" class="playback-speed playback-direction" title="播放方向" aria-label="播放方向">
+        <option value="asc" selected>低到高</option>
+        <option value="desc">高到低</option>
+      </select>
+      <input id="playbackSpeed" class="playback-speed" type="number" min="1" step="1" value="500" title="播放间隔，单位毫秒" aria-label="播放间隔毫秒">
+      <input id="playbackDelay" class="playback-speed" type="number" min="0" step="1" value="0" title="点击播放后的延迟，单位毫秒" aria-label="播放延迟毫秒">
+      <select id="rankSortColumn" hidden>
+        <option value="1">数据1</option>
+        <option value="2">数据2</option>
+        <option value="3">数据3</option>
+        <option value="4">数据4</option>
+        <option value="5">数据5</option>
+        <option value="6">数据6</option>
+        <option value="7">数据7</option>
+        <option value="8">数据8</option>
+      </select>
+      <select id="rankSortDirection" hidden>
+        <option value="asc" selected>低到高</option>
+        <option value="desc">高到低</option>
+      </select>
+    </div>
+  </section>
+
+
+
+    <section id="animationSettingsPanel" class="animation-settings-panel hidden" aria-label="播放动画设置">
+      <button id="animationSettingsClose" class="panel-close floating-close" title="隐藏动画设置" type="button" aria-label="隐藏动画设置">×</button>
+      <div class="animation-settings-title">播放动画</div>
+      <div class="animation-settings-grid">
+        <label class="animation-settings-field">
+          效果
+          <select id="playbackAnimationMode">
+            <option value="none">无动画</option>
+            <option value="outline">轮廓高亮</option>
+            <option value="pop">放大弹入</option>
+            <option value="fly">方向飞入</option>
+            <option value="fly-left">场外左入</option>
+            <option value="fly-right">场外右入</option>
+            <option value="fly-top">场外上入</option>
+            <option value="fly-bottom">场外下入</option>
+            <option value="flash">颜色闪烁</option>
+            <option value="halo">呼吸光环</option>
+            <option value="draw">描边绘制</option>
+            <option value="drop">摇曳落点</option>
+          </select>
+        </label>
+        <label class="animation-settings-field" data-animation-extra>
+          时长(ms)
+          <input id="playbackAnimationDuration" type="number" min="80" max="6000" step="10" value="650">
+        </label>
+        <label class="animation-settings-field" data-animation-extra>
+          放大倍数
+          <input id="playbackAnimationScale" type="number" min="1" max="3" step="0.05" value="1.18">
+        </label>
+        <label class="animation-settings-field" data-animation-extra data-animation-direction>
+          方向
+          <select id="playbackAnimationDirection">
+            <option value="center">中心</option>
+            <option value="left">左侧</option>
+            <option value="right">右侧</option>
+            <option value="top">上方</option>
+            <option value="bottom">下方</option>
+            <option value="top-left">左上</option>
+            <option value="top-right">右上</option>
+            <option value="bottom-left">左下</option>
+            <option value="bottom-right">右下</option>
+          </select>
+        </label>
+        <label class="animation-settings-field" data-animation-extra>
+          速度曲线
+          <select id="playbackAnimationEasing">
+            <option value="ease-out">先快后慢</option>
+            <option value="ease-in">先慢后快</option>
+            <option value="ease-in-out">两端渐变</option>
+            <option value="linear">匀速</option>
+            <option value="smooth">柔和滑入</option>
+          </select>
+        </label>
+        <label class="animation-settings-field" data-animation-extra>
+          颜色方式
+          <select id="playbackAnimationColorMode">
+            <option value="custom">自定义颜色</option>
+            <option value="fill">跟随填色</option>
+          </select>
+        </label>
+        <label class="animation-settings-field" data-animation-extra data-animation-custom-color>
+          自定义颜色
+          <input id="playbackAnimationColor" type="color" value="#e07b51">
+        </label>
+        <label class="animation-settings-field" data-animation-extra>
+          填充透明度
+          <input id="playbackAnimationFillOpacity" type="number" min="0" max="0.8" step="0.02" value="0.28">
+        </label>
+        <label class="animation-settings-field" data-animation-extra>
+          轮廓粗细
+          <input id="playbackAnimationOutlineWidth" type="number" min="1" max="12" step="0.5" value="3">
+        </label>
+      </div>
+      <div class="animation-settings-actions">
+        <button id="savePlaybackAnimationSettings" class="button primary" type="button">保存动画</button>
+        <button id="resetPlaybackAnimationSettings" class="button" type="button">恢复默认</button>
+      </div>
+    </section>
+  <section id="rankPanel" class="rank-panel hidden">
+    <button id="rankClose" class="panel-close floating-close" type="button" aria-label="关闭榜单">×</button>
+    <div id="rankHeaderNote" class="rank-header-note"></div>
+    <table id="rankTable" class="rank-table">
+      <thead>
+        <tr id="rankTableHeaderRow"></tr>
+      </thead>
+      <tbody id="rankTableBody"></tbody>
+    </table>
+    <div id="rankEmpty" class="rank-empty"></div>
+  </section>
+
+  <section id="rankSettingsPanel" class="rank-settings-panel hidden">
+    <button id="rankSettingsClose" class="panel-close floating-close" type="button" aria-label="关闭榜单设置">×</button>
+    <div class="rank-settings-title">榜单设置</div>
+    <div class="rank-settings-grid">
+      <label class="rank-settings-field">
+        行数
+        <input id="rankVisibleRows" type="number" min="1" max="100" step="1" value="10">
+      </label>
+      <label class="rank-settings-field">
+        列数
+        <input id="rankColumnCount" type="number" min="1" max="11" step="1" value="4">
+      </label>
+    </div>
+    <div class="rank-settings-section-title">列标题</div>
+    <div id="rankColumnTitleFields" class="rank-column-title-fields" aria-label="榜单列标题"></div>
+    <div class="rank-settings-actions">
+      <button id="applyRankSettings" class="button primary" type="button">应用榜单设置</button>
+    </div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const PROVINCES = {
+      "110000": { name: "北京市", center: [39.9, 116.4], directCounty: true },
+      "120000": { name: "天津市", center: [39.1, 117.2], directCounty: true },
+      "130000": { name: "河北省", center: [38.0, 114.5] },
+      "140000": { name: "山西省", center: [37.8, 112.6] },
+      "150000": { name: "内蒙古自治区", center: [44.0, 113.9] },
+      "210000": { name: "辽宁省", center: [41.8, 123.4] },
+      "220000": { name: "吉林省", center: [43.9, 125.3] },
+      "230000": { name: "黑龙江省", center: [47.9, 127.8] },
+      "310000": { name: "上海市", center: [31.2, 121.5], directCounty: true },
+      "320000": { name: "江苏省", center: [32.9, 119.8] },
+      "330000": { name: "浙江省", center: [29.2, 120.2] },
+      "340000": { name: "安徽省", center: [31.8, 117.3] },
+      "350000": { name: "福建省", center: [26.1, 118.3] },
+      "360000": { name: "江西省", center: [27.6, 115.9] },
+      "370000": { name: "山东省", center: [36.4, 118.0] },
+      "410000": { name: "河南省", center: [34.8, 113.7] },
+      "420000": { name: "湖北省", center: [30.9, 112.3] },
+      "430000": { name: "湖南省", center: [27.7, 112.9] },
+      "440000": { name: "广东省", center: [23.4, 113.4] },
+      "450000": { name: "广西壮族自治区", center: [23.8, 108.8] },
+      "460000": { name: "海南省", center: [19.2, 109.7] },
+      "500000": { name: "重庆市", center: [30.0, 107.7], directCounty: true },
+      "510000": { name: "四川省", center: [30.6, 104.1] },
+      "520000": { name: "贵州省", center: [26.8, 106.7] },
+      "530000": { name: "云南省", center: [25.0, 102.7] },
+      "540000": { name: "西藏自治区", center: [31.7, 88.4] },
+      "610000": { name: "陕西省", center: [34.3, 108.9] },
+      "620000": { name: "甘肃省", center: [36.1, 103.8] },
+      "630000": { name: "青海省", center: [35.7, 96.0] },
+      "640000": { name: "宁夏回族自治区", center: [37.3, 106.2] },
+      "650000": { name: "新疆维吾尔自治区", center: [41.1, 85.2] },
+      "710000": { name: "台湾省", center: [23.7, 121.0], directCounty: true },
+      "810000": { name: "香港特别行政区", center: [22.3, 114.2], directCounty: true },
+      "820000": { name: "澳门特别行政区", center: [22.2, 113.5], directCounty: true }
+    };
+    const DATA_BASE = "https://geo.datav.aliyun.com/areas_v3/bound";
+    const XLSX_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    const PROJECT_KEY = "map-projects-v1";
+    const URL_PARAMS = new URLSearchParams(location.search);
+    const PROVINCE_ADCODE = URL_PARAMS.get("province") || "330000";
+    const PROVINCE = {
+      adcode: PROVINCE_ADCODE,
+      ...(PROVINCES[PROVINCE_ADCODE] || PROVINCES["330000"])
+    };
+    const CURRENT_PROJECT_ID = URL_PARAMS.get("project") || "default";
+    const CURRENT_PROJECT_NAME = readProjectTitle(CURRENT_PROJECT_ID);
+    const STORAGE_PREFIX = CURRENT_PROJECT_ID === "default"
+      ? `province-county-map-${PROVINCE.adcode}-v1`
+      : `province-county-map-${PROVINCE.adcode}-v1:${CURRENT_PROJECT_ID}`;
+    const COLOR_KEY = `${STORAGE_PREFIX}:colors`;
+    const DATA_KEY = `${STORAGE_PREFIX}:data`;
+    const SETTINGS_KEY = `${STORAGE_PREFIX}:settings`;
+    migrateLegacyProvinceStorage();
+    const DEFAULT_COLORS = ["#3151b7", "#4d8bd4", "#58adbf", "#5ca96a", "#d9cb57", "#e8953e", "#cf5749"];
+    const MANUAL_SWATCHES = ["#e9a66a", "#d87358", "#5aa39a", "#4f6f8b", "#8a5cf6", "#e2c15a", "#d84d63"];
+    const DEFAULT_GRADIENT_LOW = "#3151b7";
+    const DEFAULT_GRADIENT_HIGH = "#d84d3f";
+    const RANK_DATA_COLUMN_COUNT = 8;
+    const RANK_BASE_COLUMN_COUNT = 3;
+    const DEFAULT_IMPORT_DATA_COLUMNS = ["B", "C", "D", "E", "F", "G", "H", "I"];
+    const DATA_KEYS = Array.from({ length: RANK_DATA_COLUMN_COUNT }, (_, index) => `data${index + 1}`);
+    const RANK_DATA_COLUMNS = DATA_KEYS.map((key, index) => ({
+      key,
+      label: `数据${index + 1}`
+    }));
+    const RANK_COLUMNS = [
+      { key: "rank", label: "总排名" },
+      { key: "parentRank", label: "市内" },
+      { key: "name", label: "县级行政区" },
+      ...RANK_DATA_COLUMNS
+    ];
+    const RANK_COLUMN_WIDTHS = [60, 70, 90, ...Array.from({ length: RANK_DATA_COLUMN_COUNT }, () => 70)];
+    const PLAYBACK_ANIMATION_MODE_LABELS = {
+      none: "无动画",
+      outline: "轮廓高亮",
+      pop: "放大弹入",
+      fly: "方向飞入",
+      "fly-left": "场外左入",
+      "fly-right": "场外右入",
+      "fly-top": "场外上入",
+      "fly-bottom": "场外下入",
+      flash: "颜色闪烁",
+      halo: "呼吸光环",
+      draw: "描边绘制",
+      drop: "摇曳落点"
+    };
+
+    const map = L.map("map", {
+      zoomSnap: 0.001,
+      zoomDelta: 0.1,
+      wheelPxPerZoomLevel: 240,
+      zoomControl: false,
+      preferCanvas: true,
+      attributionControl: true
+    }).setView(PROVINCE.center, 7);
+
+    L.control.attribution({ prefix: false }).addTo(map);
+
+    let provinceLayer;
+    let cityLayer;
+    let countyLayer;
+    let provinceBounds;
+    let selectedLayer = null;
+    let selectedOutlineLayer = null;
+    let mode = "select";
+    let xlsxLoadPromise;
+    let latestReportRows = [];
+    let latestLegend = [];
+    let latestLegendDefaultLabels = [];
+    let playbackRecords = [];
+    let playbackTimer = null;
+    let playbackStartTimer = null;
+    let playbackAnimationLayer = null;
+    let playbackAnimationRenderer = null;
+
+    const countyLayerByCode = new Map();
+    const countyByName = new Map();
+    const countyMetaByCode = new Map();
+    const cityCodes = new Set();
+    const colors = readJson(COLOR_KEY, {});
+    const importedData = readJson(DATA_KEY, {});
+    const savedSettings = sanitizeSettings(readJson(SETTINGS_KEY, {}));
+
+    const fineZoom = document.querySelector(".fine-zoom");
+    const fineZoomClose = document.getElementById("fineZoomClose");
+    if (fineZoom) {
+      L.DomEvent.disableClickPropagation(fineZoom);
+      L.DomEvent.disableScrollPropagation(fineZoom);
+    }
+    const topbar = document.getElementById("topbar");
+    const toolbarOpen = document.getElementById("toolbarOpen");
+    const colorPicker = document.getElementById("colorPicker");
+    const palette = document.getElementById("palette");
+    const cityToggle = document.getElementById("cityToggle");
+    const countyToggle = document.getElementById("countyToggle");
+    const excelDataColumn = document.getElementById("excelDataColumn");
+    const numericMode = document.getElementById("numericMode");
+    const bucketCount = document.getElementById("bucketCount");
+    const statusText = document.getElementById("statusText");
+    const progressFill = document.getElementById("progressFill");
+    const infoPanel = document.getElementById("infoPanel");
+    const reportPanel = document.getElementById("reportPanel");
+    const reportButton = document.getElementById("reportButton");
+    const reportBody = document.getElementById("reportBody");
+    const reportSummary = document.getElementById("reportSummary");
+    const playbackButton = document.getElementById("playbackButton");
+    const playbackPanel = document.getElementById("playbackPanel");
+    const playbackClose = document.getElementById("playbackClose");
+    const playButton = document.getElementById("playButton");
+    const resetPlaybackButton = document.getElementById("resetPlaybackButton");
+    const playbackRange = document.getElementById("playbackRange");
+    const playbackCount = document.getElementById("playbackCount");
+    const playbackDirection = document.getElementById("playbackDirection");
+    const playbackSpeed = document.getElementById("playbackSpeed");
+    const playbackDelay = document.getElementById("playbackDelay");
+    const rankButton = document.getElementById("rankButton");
+    const rankSettingsButton = document.getElementById("rankSettingsButton");
+    const animationSettingsButton = document.getElementById("animationSettingsButton");
+    const animationSettingsPanel = document.getElementById("animationSettingsPanel");
+    const animationSettingsClose = document.getElementById("animationSettingsClose");
+    const playbackAnimationMode = document.getElementById("playbackAnimationMode");
+    const playbackAnimationDuration = document.getElementById("playbackAnimationDuration");
+    const playbackAnimationScale = document.getElementById("playbackAnimationScale");
+    const playbackAnimationDirection = document.getElementById("playbackAnimationDirection");
+    const playbackAnimationEasing = document.getElementById("playbackAnimationEasing");
+    const playbackAnimationColorMode = document.getElementById("playbackAnimationColorMode");
+    const playbackAnimationColor = document.getElementById("playbackAnimationColor");
+    const playbackAnimationFillOpacity = document.getElementById("playbackAnimationFillOpacity");
+    const playbackAnimationOutlineWidth = document.getElementById("playbackAnimationOutlineWidth");
+    const savePlaybackAnimationSettingsButton = document.getElementById("savePlaybackAnimationSettings");
+    const resetPlaybackAnimationSettingsButton = document.getElementById("resetPlaybackAnimationSettings");
+    const rankPanel = document.getElementById("rankPanel");
+    const rankClose = document.getElementById("rankClose");
+    const rankSettingsPanel = document.getElementById("rankSettingsPanel");
+    const rankSettingsClose = document.getElementById("rankSettingsClose");
+    const rankSortColumn = document.getElementById("rankSortColumn");
+    const rankSortDirection = document.getElementById("rankSortDirection");
+    const rankVisibleRows = document.getElementById("rankVisibleRows");
+    const rankColumnCount = document.getElementById("rankColumnCount");
+    const rankColumnTitleFields = document.getElementById("rankColumnTitleFields");
+    const applyRankSettings = document.getElementById("applyRankSettings");
+    const rankTable = document.getElementById("rankTable");
+    const rankTableHeaderRow = document.getElementById("rankTableHeaderRow");
+    const rankBody = document.getElementById("rankTableBody");
+    const rankEmpty = document.getElementById("rankEmpty");
+    const legend = document.getElementById("legend");
+    const legendBar = document.getElementById("legendBar");
+    const legendLabels = document.getElementById("legendLabels");
+    const toolbarClose = document.getElementById("toolbarClose");
+    const statusPanel = document.getElementById("statusPanel");
+    const resetFloatingButton = document.getElementById("resetFloatingButton");
+    const lockFloatingButton = document.getElementById("lockFloatingButton");
+    const closeButtonsToggle = document.getElementById("closeButtonsToggle");
+    const zoomPanelToggle = document.getElementById("zoomPanelToggle");
+    const rulesPanel = document.getElementById("rulesPanel");
+    const rulesButton = document.getElementById("rulesButton");
+    const rulesClose = document.getElementById("rulesClose");
+    const ruleExcelDataColumn = document.getElementById("ruleExcelDataColumn");
+    const ruleImportNameColumn = document.getElementById("ruleImportNameColumn");
+    const ruleImportData1Column = document.getElementById("ruleImportData1Column");
+    const ruleImportData2Column = document.getElementById("ruleImportData2Column");
+    const ruleImportData3Column = document.getElementById("ruleImportData3Column");
+    const ruleImportDataColumns = Array.from({ length: RANK_DATA_COLUMN_COUNT }, (_, index) => document.getElementById(`ruleImportData${index + 1}Column`));
+    const ruleNumericMode = document.getElementById("ruleNumericMode");
+    const ruleBucketCount = document.getElementById("ruleBucketCount");
+    const ruleBucketBoundaries = document.getElementById("ruleBucketBoundaries");
+    const ruleGradientLowColor = document.getElementById("ruleGradientLowColor");
+    const ruleGradientHighColor = document.getElementById("ruleGradientHighColor");
+    const ruleText = document.getElementById("ruleText");
+    const ruleBucketColors = document.getElementById("ruleBucketColors");
+    const legendLabelPanel = document.getElementById("legendLabelPanel");
+    const legendLabelButton = document.getElementById("legendLabelButton");
+    const legendLabelClose = document.getElementById("legendLabelClose");
+    const legendLabelFields = document.getElementById("legendLabelFields");
+    const legendBarWidthInput = document.getElementById("legendBarWidth");
+    const legendBarHeightInput = document.getElementById("legendBarHeight");
+    const legendLabelFontSizeInput = document.getElementById("legendLabelFontSize");
+    const resetLegendLabelsButton = document.getElementById("resetLegendLabelsButton");
+    const saveLegendLabelsButton = document.getElementById("saveLegendLabelsButton");
+    let floatingPanelsLocked = false;
+    let floatingCloseButtonsHidden = readJson(`${STORAGE_PREFIX}:hide-close-buttons`, false);
+
+    document.title = `${CURRENT_PROJECT_NAME || PROVINCE.name}县级填色地图`;
+    document.getElementById("pageTitle").textContent = CURRENT_PROJECT_NAME || `${PROVINCE.name}县级填色地图`;
+
+    function readJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function readProjectTitle(projectId) {
+      if (!projectId || projectId === "default") return "";
+      try {
+        const projects = JSON.parse(localStorage.getItem(PROJECT_KEY) || "[]");
+        const project = Array.isArray(projects) ? projects.find((item) => item?.id === projectId) : null;
+        return project?.name || "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function writeJson(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+
+
+    function defaultPlaybackAnimationSettings() {
+      return {
+        playbackAnimationMode: "none",
+        playbackAnimationDuration: 650,
+        playbackAnimationScale: 1.18,
+        playbackAnimationDirection: "center",
+        playbackAnimationEasing: "ease-out",
+        playbackAnimationColorMode: "custom",
+        playbackAnimationColor: "#e07b51",
+        playbackAnimationFillOpacity: 0.28,
+        playbackAnimationOutlineWidth: 3
+      };
+    }
+
+    function normalizePlaybackAnimationMode(value) {
+      return ["none", "outline", "pop", "fly", "fly-left", "fly-right", "fly-top", "fly-bottom", "flash", "halo", "draw", "drop"].includes(value) ? value : "none";
+    }
+
+    function normalizePlaybackAnimationDirection(value) {
+      return ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"].includes(value) ? value : "center";
+    }
+
+    function normalizePlaybackAnimationEasing(value) {
+      return ["linear", "ease", "ease-in", "ease-out", "ease-in-out", "smooth"].includes(value) ? value : "ease-out";
+    }
+
+    function normalizePlaybackAnimationColorMode(value) {
+      return value === "fill" ? "fill" : "custom";
+    }
+
+    function boundedNumber(value, min, max, fallback) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return fallback;
+      return Math.max(min, Math.min(max, numeric));
+    }
+
+    function sanitizePlaybackAnimationSettings(source = {}, fallback = defaultPlaybackAnimationSettings()) {
+      const settings = source && typeof source === "object" ? source : {};
+      return {
+        playbackAnimationMode: normalizePlaybackAnimationMode(settings.playbackAnimationMode ?? settings.mode ?? settings.animationMode ?? fallback.playbackAnimationMode),
+        playbackAnimationDuration: Math.round(boundedNumber(settings.playbackAnimationDuration ?? settings.duration ?? settings.animationDuration, 80, 6000, fallback.playbackAnimationDuration)),
+        playbackAnimationScale: Number(boundedNumber(settings.playbackAnimationScale ?? settings.scale ?? settings.animationScale, 1, 3, fallback.playbackAnimationScale).toFixed(2)),
+        playbackAnimationDirection: normalizePlaybackAnimationDirection(settings.playbackAnimationDirection ?? settings.direction ?? settings.animationDirection ?? fallback.playbackAnimationDirection),
+        playbackAnimationEasing: normalizePlaybackAnimationEasing(settings.playbackAnimationEasing ?? settings.easing ?? settings.animationEasing ?? fallback.playbackAnimationEasing),
+        playbackAnimationColorMode: normalizePlaybackAnimationColorMode(settings.playbackAnimationColorMode ?? settings.colorMode ?? settings.animationColorMode ?? fallback.playbackAnimationColorMode),
+        playbackAnimationColor: isHexColor(settings.playbackAnimationColor ?? settings.color ?? settings.highlightColor ?? settings.animationColor) ? String(settings.playbackAnimationColor ?? settings.color ?? settings.highlightColor ?? settings.animationColor).toLowerCase() : fallback.playbackAnimationColor,
+        playbackAnimationFillOpacity: Number(boundedNumber(settings.playbackAnimationFillOpacity ?? settings.fillOpacity ?? settings.animationFillOpacity, 0, 0.8, fallback.playbackAnimationFillOpacity).toFixed(2)),
+        playbackAnimationOutlineWidth: Number(boundedNumber(settings.playbackAnimationOutlineWidth ?? settings.outlineWidth ?? settings.animationOutlineWidth, 1, 12, fallback.playbackAnimationOutlineWidth).toFixed(1))
+      };
+    }
+    function defaultSettings() {
+      return {
+        excelDataColumn: 1,
+        importNameColumn: "A",
+        ...Object.fromEntries(DEFAULT_IMPORT_DATA_COLUMNS.map((letter, index) => [
+          `importData${index + 1}Column`,
+          letter
+        ])),
+        numericMode: "bucket",
+        bucketCount: 7,
+        bucketBoundaries: "",
+        bucketColors: [...DEFAULT_COLORS],
+        gradientLowColor: DEFAULT_GRADIENT_LOW,
+        gradientHighColor: DEFAULT_GRADIENT_HIGH,
+        rulesText: "",
+        legendLabels: [],
+        legendBarWidth: 500,
+        legendBarHeight: 22,
+        legendLabelFontSize: 13,
+        rankSortColumn: 1,
+        rankSortDirection: "asc",
+        rankVisibleRows: 10,
+        rankColumnCount: 4,
+        rankColumnTitles: RANK_COLUMNS.map((column) => column.label),
+        rankColumnWidths: [...RANK_COLUMN_WIDTHS],
+        playbackSpeed: 500,
+        playbackDelay: 0,
+        ...defaultPlaybackAnimationSettings()
+      };
+    }
+
+    function sanitizeSettings(value = {}) {
+      const source = value && typeof value === "object" ? value : {};
+      const fallback = defaultSettings();
+      const rawLegendBarWidth = Number(source.legendBarWidth ?? source.bucketLegendBarWidth);
+      const rawLegendBarHeight = Number(source.legendBarHeight ?? source.bucketLegendBarHeight);
+      const oldDefaultLegendSize = rawLegendBarWidth === 420 && rawLegendBarHeight === 30;
+      const bucketCountValue = clamp(Math.floor(Number(source.bucketCount) || fallback.bucketCount), 2, 12);
+      const bucketColors = Array.from({ length: bucketCountValue }, (_, index) => {
+        const color = Array.isArray(source.bucketColors) ? source.bucketColors[index] : "";
+        return isHexColor(color) ? String(color).toLowerCase() : DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+      });
+      return {
+        excelDataColumn: clamp(Math.floor(Number(source.excelDataColumn) || fallback.excelDataColumn), 1, RANK_DATA_COLUMN_COUNT),
+        importNameColumn: normalizeExcelColumnLetter(source.importNameColumn, fallback.importNameColumn),
+        importData1Column: normalizeExcelColumnLetter(source.importData1Column, fallback.importData1Column),
+        importData2Column: normalizeExcelColumnLetter(source.importData2Column, fallback.importData2Column),
+        importData3Column: normalizeExcelColumnLetter(source.importData3Column, fallback.importData3Column),
+        importData4Column: normalizeExcelColumnLetter(source.importData4Column, fallback.importData4Column),
+        importData5Column: normalizeExcelColumnLetter(source.importData5Column, fallback.importData5Column),
+        importData6Column: normalizeExcelColumnLetter(source.importData6Column, fallback.importData6Column),
+        importData7Column: normalizeExcelColumnLetter(source.importData7Column, fallback.importData7Column),
+        importData8Column: normalizeExcelColumnLetter(source.importData8Column, fallback.importData8Column),
+        numericMode: source.numericMode === "gradient" ? "gradient" : "bucket",
+        bucketCount: bucketCountValue,
+        bucketBoundaries: String(source.bucketBoundaries ?? fallback.bucketBoundaries),
+        bucketColors,
+        gradientLowColor: isHexColor(source.gradientLowColor) ? String(source.gradientLowColor).toLowerCase() : fallback.gradientLowColor,
+        gradientHighColor: isHexColor(source.gradientHighColor) ? String(source.gradientHighColor).toLowerCase() : fallback.gradientHighColor,
+        rulesText: String(source.rulesText ?? fallback.rulesText),
+        legendLabels: Array.isArray(source.legendLabels) ? source.legendLabels.map((label) => String(label ?? "")) : [],
+        legendBarWidth: oldDefaultLegendSize ? 500 : clamp(Math.floor(Number(source.legendBarWidth ?? source.bucketLegendBarWidth) || fallback.legendBarWidth), 180, 1200),
+        legendBarHeight: oldDefaultLegendSize ? 22 : clamp(Math.floor(Number(source.legendBarHeight ?? source.bucketLegendBarHeight) || fallback.legendBarHeight), 8, 80),
+        legendLabelFontSize: clamp(Math.floor(Number(source.legendLabelFontSize ?? source.bucketLegendLabelFontSize) || fallback.legendLabelFontSize), 8, 48),
+        rankSortColumn: clamp(Math.floor(Number(source.rankSortColumn) || source.excelDataColumn || fallback.rankSortColumn), 1, RANK_DATA_COLUMN_COUNT),
+        rankSortDirection: source.rankSortDirection === "desc" ? "desc" : (source.rankSortDirection === "asc" ? "asc" : fallback.rankSortDirection),
+        rankVisibleRows: clamp(Math.floor(Number(source.rankVisibleRows) || fallback.rankVisibleRows), 1, 100),
+        rankColumnCount: clamp(Math.floor(Number(source.rankColumnCount) || fallback.rankColumnCount), 1, RANK_COLUMNS.length),
+        rankColumnTitles: RANK_COLUMNS.map((column, index) => {
+          const title = Array.isArray(source.rankColumnTitles) ? String(source.rankColumnTitles[index] ?? "").trim() : "";
+          if (index === 1 && normalizeText(title) === "所属") {
+            return column.label;
+          }
+          return title || column.label;
+        }),
+        rankColumnWidths: RANK_COLUMN_WIDTHS.map((width, index) => {
+          const value = Array.isArray(source.rankColumnWidths) ? Number(source.rankColumnWidths[index]) : NaN;
+          return Number.isFinite(value) && value > 0 ? value : width;
+        }),
+        playbackSpeed: clamp(Math.floor(Number(source.playbackSpeed) || fallback.playbackSpeed), 1, 600000),
+        playbackDelay: clamp(Math.floor(Number(source.playbackDelay) || fallback.playbackDelay), 0, 600000),
+        ...sanitizePlaybackAnimationSettings(source, fallback)
+      };
+    }
+
+    function migrateLegacyProvinceStorage() {
+      if (PROVINCE.adcode !== "330000") return;
+      const legacyPrefix = CURRENT_PROJECT_ID === "default"
+        ? "province-county-map-zhejiang-v1"
+        : `province-county-map-zhejiang-v1:${CURRENT_PROJECT_ID}`;
+      if (legacyPrefix === STORAGE_PREFIX) return;
+      ["colors", "data", "settings", "hide-close-buttons"].forEach((suffix) => {
+        const nextKey = `${STORAGE_PREFIX}:${suffix}`;
+        const legacyKey = `${legacyPrefix}:${suffix}`;
+        if (localStorage.getItem(nextKey) === null && localStorage.getItem(legacyKey) !== null) {
+          localStorage.setItem(nextKey, localStorage.getItem(legacyKey));
+        }
+      });
+    }
+
+    function asAdcode(value) {
+      return String(value || "").padStart(6, "0");
+    }
+
+    function isHexColor(value) {
+      return /^#[0-9a-f]{6}$/i.test(String(value || ""));
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function boundaryUrl(adcode, full = true) {
+      return `${DATA_BASE}/${adcode}${full ? "_full" : ""}.json`;
+    }
+
+    async function fetchGeoJson(adcode, full = true) {
+      const response = await fetch(boundaryUrl(adcode, full), { cache: "force-cache" });
+      if (!response.ok) {
+        throw new Error(`${adcode} 边界加载失败`);
+      }
+      return response.json();
+    }
+
+    function getFeatureName(feature) {
+      return String(feature?.properties?.name || "");
+    }
+
+    function getFeatureCode(feature) {
+      return asAdcode(feature?.properties?.adcode);
+    }
+
+    function getParentName(feature) {
+      return String(feature?.properties?.parent?.name || PROVINCE.name);
+    }
+
+    function shouldLoadChildCounties(feature) {
+      if (PROVINCE.directCounty) return false;
+      const code = getFeatureCode(feature);
+      return /^\d{4}00$/.test(code);
+    }
+
+    function normalizeName(value) {
+      return String(value || "")
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/^(浙江省|浙江)/, "")
+        .replace(/(特别行政区|自治县|自治州|自治旗|市辖区)$/g, "")
+        .replace(/[县市区]$/g, "");
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .trim()
+        .replace(/\s+/g, "")
+        .toLowerCase();
+    }
+
+    function normalizeExcelColumnLetter(value, fallback = "A") {
+      const text = String(value || "")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z]/g, "");
+      return text || fallback;
+    }
+
+    function excelColumnIndex(value, fallback) {
+      const letters = normalizeExcelColumnLetter(value, fallback);
+      let index = 0;
+      for (const char of letters) {
+        index = index * 26 + (char.charCodeAt(0) - 64);
+      }
+      return Math.max(0, index - 1);
+    }
+
+    function getImportColumnIndexes(source = savedSettings) {
+      const result = {
+        name: excelColumnIndex(source.importNameColumn, "A")
+      };
+      DATA_KEYS.forEach((key, index) => {
+        result[key] = excelColumnIndex(source[`importData${index + 1}Column`], DEFAULT_IMPORT_DATA_COLUMNS[index]);
+      });
+      return result;
+    }
+
+    function cellByIndex(row, index) {
+      return index >= 0 ? String(row?.[index] ?? "").trim() : "";
+    }
+
+    function isAuxiliaryImportHeader(value) {
+      const text = normalizeText(value);
+      return /^(所属|所属地市|所属城市|所属市|地市|地级市|上级|父级|省份|省|城市|市|排名|名次|序号|代码|adcode)$/.test(text);
+    }
+
+    function importColumnsFromHeader(header, configuredColumns) {
+      const used = new Set([configuredColumns.name]);
+      const preferred = DATA_KEYS.map((key) => configuredColumns[key]);
+      const dataIndexes = [];
+      preferred.forEach((index) => {
+        if (index >= 0 && !used.has(index) && !dataIndexes.includes(index) && !isAuxiliaryImportHeader(header?.[index])) {
+          dataIndexes.push(index);
+        }
+      });
+      for (let index = 0; index < (header?.length || 0) && dataIndexes.length < RANK_DATA_COLUMN_COUNT; index += 1) {
+        if (used.has(index) || dataIndexes.includes(index)) continue;
+        if (!String(header?.[index] ?? "").trim()) continue;
+        if (isAuxiliaryImportHeader(header[index])) continue;
+        dataIndexes.push(index);
+      }
+      while (dataIndexes.length < RANK_DATA_COLUMN_COUNT) {
+        dataIndexes.push(-1);
+      }
+      return {
+        name: configuredColumns.name,
+        ...Object.fromEntries(DATA_KEYS.map((key, index) => [key, dataIndexes[index]]))
+      };
+    }
+
+    function shortParentRankName(value) {
+      return String(value || "")
+        .trim()
+        .replace(/自治州$/, "")
+        .replace(/地区$/, "")
+        .replace(/盟$/, "")
+        .replace(/市$/, "");
+    }
+
+    function addCountyAlias(name, code) {
+      const normalized = normalizeName(name);
+      if (!normalized) return;
+      if (!countyByName.has(normalized)) {
+        countyByName.set(normalized, code);
+      }
+    }
+
+    function buildCountyIndexes(feature, parentName) {
+      const code = getFeatureCode(feature);
+      const name = getFeatureName(feature);
+      countyMetaByCode.set(code, {
+        code,
+        name,
+        parentName,
+        rawName: name
+      });
+      addCountyAlias(name, code);
+      addCountyAlias(name.replace(/(市|区|县)$/g, ""), code);
+      addCountyAlias(`${parentName}${name}`, code);
+    }
+
+    function matchCounty(value) {
+      const text = String(value || "").trim();
+      if (!text) return null;
+      const code = text.match(/\d{6}/)?.[0];
+      if (code && countyLayerByCode.has(code)) return code;
+      const normalized = normalizeName(text);
+      if (countyByName.has(normalized)) return countyByName.get(normalized);
+      for (const [name, adcode] of countyByName.entries()) {
+        if (name && (normalized.includes(name) || name.includes(normalized))) {
+          return adcode;
+        }
+      }
+      return null;
+    }
+
+    function countyStyle(feature) {
+      const code = getFeatureCode(feature);
+      const fillColor = colors[code] || "#eef6f5";
+      const selected = selectedLayer?.feature && getFeatureCode(selectedLayer.feature) === code;
+      return {
+        color: selected ? "#d87358" : "#69a9b0",
+        weight: selected ? 2.4 : 0.8,
+        opacity: 1,
+        fillColor,
+        fillOpacity: colors[code] ? 0.86 : 0.42
+      };
+    }
+
+    function countyHighlightStyle(feature) {
+      const style = countyStyle(feature);
+      return {
+        ...style,
+        color: "#f28a55",
+        weight: 3,
+        opacity: 1
+      };
+    }
+
+    function cityStyle() {
+      return {
+        color: "#31515b",
+        weight: 1.7,
+        opacity: 0.92,
+        fillOpacity: 0,
+        interactive: false
+      };
+    }
+
+    function provinceStyle() {
+      return {
+        color: "#243940",
+        weight: 2.4,
+        opacity: 0.98,
+        fillOpacity: 0,
+        interactive: false
+      };
+    }
+
+    function refreshCountyStyles() {
+      countyLayerByCode.forEach((layer) => layer.setStyle(countyStyle(layer.feature)));
+    }
+
+    function clearSelectedOutline() {
+      if (selectedOutlineLayer) {
+        selectedOutlineLayer.remove();
+        selectedOutlineLayer = null;
+      }
+    }
+
+    function showSelectedOutline(feature) {
+      clearSelectedOutline();
+      selectedOutlineLayer = L.geoJSON(feature, {
+        style: {
+          color: "#f28a55",
+          weight: 3,
+          opacity: 1,
+          fillOpacity: 0,
+          interactive: false
+        }
+      }).addTo(map);
+      selectedOutlineLayer.bringToFront();
+    }
+
+    function saveColors() {
+      writeJson(COLOR_KEY, colors);
+    }
+
+    function saveData() {
+      writeJson(DATA_KEY, importedData);
+    }
+
+
+
+    function collectPlaybackAnimationSettings() {
+      return sanitizePlaybackAnimationSettings({
+        playbackAnimationMode: playbackAnimationMode?.value,
+        playbackAnimationDuration: playbackAnimationDuration?.value,
+        playbackAnimationScale: playbackAnimationScale?.value,
+        playbackAnimationDirection: playbackAnimationDirection?.value,
+        playbackAnimationEasing: playbackAnimationEasing?.value,
+        playbackAnimationColorMode: playbackAnimationColorMode?.value,
+        playbackAnimationColor: playbackAnimationColor?.value,
+        playbackAnimationFillOpacity: playbackAnimationFillOpacity?.value,
+        playbackAnimationOutlineWidth: playbackAnimationOutlineWidth?.value
+      }, savedSettings);
+    }
+
+    function updatePlaybackAnimationFields() {
+      if (!animationSettingsPanel || !playbackAnimationMode) return;
+      const mode = playbackAnimationMode.value;
+      animationSettingsPanel.querySelectorAll("[data-animation-extra]").forEach((field) => {
+        field.hidden = mode === "none";
+      });
+      animationSettingsPanel.querySelectorAll("[data-animation-direction]").forEach((field) => {
+        field.hidden = !["fly", "drop"].includes(mode);
+      });
+      animationSettingsPanel.querySelectorAll("[data-animation-custom-color]").forEach((field) => {
+        field.hidden = mode === "none" || playbackAnimationColorMode?.value === "fill";
+      });
+    }
+
+    function setPlaybackAnimationSettings(settings, persist = false) {
+      const safeSettings = sanitizePlaybackAnimationSettings(settings, savedSettings);
+      if (playbackAnimationMode) playbackAnimationMode.value = safeSettings.playbackAnimationMode;
+      if (playbackAnimationDuration) playbackAnimationDuration.value = String(safeSettings.playbackAnimationDuration);
+      if (playbackAnimationScale) playbackAnimationScale.value = String(safeSettings.playbackAnimationScale);
+      if (playbackAnimationDirection) playbackAnimationDirection.value = safeSettings.playbackAnimationDirection;
+      if (playbackAnimationEasing) playbackAnimationEasing.value = safeSettings.playbackAnimationEasing;
+      if (playbackAnimationColorMode) playbackAnimationColorMode.value = safeSettings.playbackAnimationColorMode;
+      if (playbackAnimationColor) playbackAnimationColor.value = safeSettings.playbackAnimationColor;
+      if (playbackAnimationFillOpacity) playbackAnimationFillOpacity.value = String(safeSettings.playbackAnimationFillOpacity);
+      if (playbackAnimationOutlineWidth) playbackAnimationOutlineWidth.value = String(safeSettings.playbackAnimationOutlineWidth);
+      Object.assign(savedSettings, safeSettings);
+      updatePlaybackAnimationFields();
+      if (persist) saveSettings();
+    }
+
+    function playbackAnimationCssEasing(value) {
+      if (value === "smooth") return "cubic-bezier(.22,.8,.25,1)";
+      if (["linear", "ease", "ease-in", "ease-out", "ease-in-out"].includes(value)) return value;
+      return "ease-out";
+    }
+
+    function playbackAnimationOffset(direction) {
+      const offsets = {
+        center: [0, 0],
+        left: [-180, 0],
+        right: [180, 0],
+        top: [0, -150],
+        bottom: [0, 150],
+        "top-left": [-160, -125],
+        "top-right": [160, -125],
+        "bottom-left": [-160, 125],
+        "bottom-right": [160, 125]
+      };
+      return offsets[direction] || offsets.center;
+    }
+
+    function playbackAnimationStageOffset(mode, layer, direction) {
+      const stageModeSide = {
+        "fly-left": "left",
+        "fly-right": "right",
+        "fly-top": "top",
+        "fly-bottom": "bottom"
+      };
+      const side = stageModeSide[mode];
+      if (!side) return playbackAnimationOffset(direction);
+      const size = map.getSize();
+      const bounds = layer?.getBounds?.();
+      const center = bounds?.isValid?.()
+        ? map.latLngToContainerPoint(bounds.getCenter())
+        : L.point(size.x / 2, size.y / 2);
+      const margin = Math.max(180, Math.min(size.x, size.y) * 0.16);
+      if (side === "left") return [-(center.x + margin), 0];
+      if (side === "right") return [size.x - center.x + margin, 0];
+      if (side === "top") return [0, -(center.y + margin)];
+      return [0, size.y - center.y + margin];
+    }
+
+    function playbackAnimationBounceOffset(offsetX, offsetY) {
+      const bounce = 12;
+      return [
+        offsetX ? -Math.sign(offsetX) * bounce : 0,
+        offsetY ? -Math.sign(offsetY) * bounce : 0
+      ];
+    }
+
+    function playbackAnimationDashArray(mode) {
+      if (mode === "outline") return "7 5";
+      if (mode === "draw") return "260 260";
+      return null;
+    }
+
+    function playbackAnimationFillColor(mode, recordColor, animationColor) {
+      return ["outline", "draw", "halo"].includes(mode) ? animationColor : (recordColor || animationColor);
+    }
+
+    function playbackAnimationEffectiveColor(settings, recordColor) {
+      const fillColor = String(recordColor || "").toLowerCase();
+      return settings.playbackAnimationColorMode === "fill" && isHexColor(fillColor) ? fillColor : settings.playbackAnimationColor;
+    }
+
+    function playbackAnimationModeFillOpacity(mode, configuredOpacity) {
+      if (mode === "outline" || mode === "draw") return Math.min(0.16, configuredOpacity);
+      if (mode === "halo") return Math.min(0.2, configuredOpacity);
+      return configuredOpacity;
+    }
+
+    function ensurePlaybackAnimationRenderer() {
+      if (!map.getPane("playbackAnimationPane")) {
+        const pane = map.createPane("playbackAnimationPane");
+        pane.style.zIndex = 690;
+        pane.style.pointerEvents = "none";
+      }
+      if (!playbackAnimationRenderer) {
+        playbackAnimationRenderer = L.svg({ pane: "playbackAnimationPane" }).addTo(map);
+      }
+      return playbackAnimationRenderer;
+    }
+
+    function clearPlaybackAnimationLayer() {
+      if (playbackAnimationLayer) {
+        map.removeLayer(playbackAnimationLayer);
+        playbackAnimationLayer = null;
+      }
+    }
+
+    function animatePlaybackRecord(record) {
+      const settings = collectPlaybackAnimationSettings();
+      if (settings.playbackAnimationMode === "none" || !record) {
+        clearPlaybackAnimationLayer();
+        return;
+      }
+      const layer = countyLayerByCode.get(asAdcode(record.code));
+      if (!layer?.feature) return;
+      clearPlaybackAnimationLayer();
+      const [offsetX, offsetY] = playbackAnimationStageOffset(settings.playbackAnimationMode, layer, settings.playbackAnimationDirection);
+      const [bounceX, bounceY] = playbackAnimationBounceOffset(offsetX, offsetY);
+      const animationColor = playbackAnimationEffectiveColor(settings, record.fillColor);
+      const animationLayer = L.geoJSON(layer.feature, {
+        interactive: false,
+        pane: "playbackAnimationPane",
+        renderer: ensurePlaybackAnimationRenderer(),
+        style: {
+          className: `playback-animation-path playback-animation-${settings.playbackAnimationMode}`,
+          color: animationColor,
+          weight: settings.playbackAnimationOutlineWidth,
+          opacity: 0.98,
+          dashArray: playbackAnimationDashArray(settings.playbackAnimationMode),
+          fillColor: playbackAnimationFillColor(settings.playbackAnimationMode, record.fillColor, animationColor),
+          fillOpacity: playbackAnimationModeFillOpacity(settings.playbackAnimationMode, settings.playbackAnimationFillOpacity)
+        }
+      }).addTo(map);
+      playbackAnimationLayer = animationLayer;
+      animationLayer.eachLayer((item) => {
+        if (!item._path) return;
+        item._path.style.setProperty("--playback-anim-duration", `${settings.playbackAnimationDuration}ms`);
+        item._path.style.setProperty("--playback-anim-scale", String(settings.playbackAnimationScale));
+        item._path.style.setProperty("--playback-anim-x", `${offsetX}px`);
+        item._path.style.setProperty("--playback-anim-y", `${offsetY}px`);
+        item._path.style.setProperty("--playback-anim-stage-x", `${offsetX}px`);
+        item._path.style.setProperty("--playback-anim-stage-y", `${offsetY}px`);
+        item._path.style.setProperty("--playback-anim-bounce-x", `${bounceX}px`);
+        item._path.style.setProperty("--playback-anim-bounce-y", `${bounceY}px`);
+        item._path.style.setProperty("--playback-anim-color", animationColor);
+        item._path.style.setProperty("--playback-anim-dash", "260");
+        item._path.style.setProperty("--playback-anim-easing", playbackAnimationCssEasing(settings.playbackAnimationEasing));
+      });
+      window.setTimeout(() => {
+        if (playbackAnimationLayer === animationLayer) {
+          clearPlaybackAnimationLayer();
+        }
+      }, settings.playbackAnimationDuration + 120);
+    }
+
+    function applyCountyAiPlaybackAnimationSettings(settings = {}) {
+      const safeSettings = sanitizePlaybackAnimationSettings(settings, savedSettings);
+      setPlaybackAnimationSettings(safeSettings, true);
+      return safeSettings.playbackAnimationMode === "none"
+        ? "已关闭播放动画。"
+        : `已设置播放动画：${safeSettings.playbackAnimationMode}，时长 ${safeSettings.playbackAnimationDuration}ms。`;
+    }
+    function saveSettings() {
+      const next = sanitizeSettings({
+        excelDataColumn: Number(excelDataColumn.value),
+        importNameColumn: ruleImportNameColumn ? ruleImportNameColumn.value : savedSettings.importNameColumn,
+        ...Object.fromEntries(ruleImportDataColumns.map((input, index) => [
+          `importData${index + 1}Column`,
+          input?.value || savedSettings[`importData${index + 1}Column`] || DEFAULT_IMPORT_DATA_COLUMNS[index]
+        ])),
+        numericMode: numericMode.value,
+        bucketCount: Number(bucketCount.value),
+        bucketBoundaries: ruleBucketBoundaries?.value || savedSettings.bucketBoundaries,
+        bucketColors: collectRuleBucketColors(),
+        gradientLowColor: ruleGradientLowColor?.value || savedSettings.gradientLowColor,
+        gradientHighColor: ruleGradientHighColor?.value || savedSettings.gradientHighColor,
+        rulesText: ruleText?.value || savedSettings.rulesText,
+        legendLabels: savedSettings.legendLabels || [],
+        rankSortColumn: Number(rankSortColumn?.value || savedSettings.rankSortColumn),
+        rankSortDirection: rankSortDirection?.value || savedSettings.rankSortDirection,
+        rankVisibleRows: Number(rankVisibleRows?.value || savedSettings.rankVisibleRows),
+        rankColumnCount: Number(rankColumnCount?.value || savedSettings.rankColumnCount),
+        rankColumnTitles: getRankColumnTitles(),
+        rankColumnWidths: getRankColumnWidths(),
+        playbackSpeed: Number(playbackSpeed?.value || savedSettings.playbackSpeed),
+        playbackDelay: Number(playbackDelay?.value || savedSettings.playbackDelay),
+        ...collectPlaybackAnimationSettings()
+      });
+      Object.assign(savedSettings, next);
+      writeJson(SETTINGS_KEY, savedSettings);
+    }
+
+    function collectRuleBucketColors() {
+      if (!ruleBucketColors) return savedSettings.bucketColors;
+      const values = Array.from(ruleBucketColors.querySelectorAll("input[type='color']")).map((input) => input.value);
+      return values.length ? values : savedSettings.bucketColors;
+    }
+
+    function renderRuleBucketColors(colors = savedSettings.bucketColors) {
+      const count = clamp(Math.floor(Number(ruleBucketCount.value || bucketCount.value) || savedSettings.bucketCount), 2, 12);
+      ruleBucketColors.innerHTML = "";
+      Array.from({ length: count }, (_, index) => colors[index] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]).forEach((color, index) => {
+        const row = document.createElement("label");
+        row.className = "color-row";
+        row.textContent = `第${index + 1}段`;
+        const input = document.createElement("input");
+        input.type = "color";
+        input.value = isHexColor(color) ? color : DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+        row.appendChild(input);
+        ruleBucketColors.appendChild(row);
+      });
+    }
+
+    function syncRulePanelFromSettings() {
+      ruleExcelDataColumn.value = String(savedSettings.excelDataColumn);
+      ruleImportNameColumn.value = savedSettings.importNameColumn || "A";
+      ruleImportDataColumns.forEach((input, index) => {
+        if (input) input.value = savedSettings[`importData${index + 1}Column`] || DEFAULT_IMPORT_DATA_COLUMNS[index];
+      });
+      ruleNumericMode.value = savedSettings.numericMode;
+      ruleBucketCount.value = String(savedSettings.bucketCount);
+      ruleBucketBoundaries.value = savedSettings.bucketBoundaries;
+      ruleGradientLowColor.value = savedSettings.gradientLowColor;
+      ruleGradientHighColor.value = savedSettings.gradientHighColor;
+      ruleText.value = savedSettings.rulesText;
+      renderRuleBucketColors(savedSettings.bucketColors);
+    }
+
+    function collectRulePanelSettings(resetLegendLabels = false) {
+      return sanitizeSettings({
+        ...savedSettings,
+        excelDataColumn: Number(ruleExcelDataColumn.value),
+        importNameColumn: ruleImportNameColumn.value,
+        ...Object.fromEntries(ruleImportDataColumns.map((input, index) => [
+          `importData${index + 1}Column`,
+          input?.value || DEFAULT_IMPORT_DATA_COLUMNS[index]
+        ])),
+        numericMode: ruleNumericMode.value,
+        bucketCount: Number(ruleBucketCount.value),
+        bucketBoundaries: ruleBucketBoundaries.value,
+        bucketColors: collectRuleBucketColors(),
+        gradientLowColor: ruleGradientLowColor.value,
+        gradientHighColor: ruleGradientHighColor.value,
+        rulesText: ruleText.value,
+        legendLabels: resetLegendLabels ? [] : savedSettings.legendLabels
+      });
+    }
+
+    function applySettingsToTopControls() {
+      excelDataColumn.value = String(savedSettings.excelDataColumn);
+      numericMode.value = savedSettings.numericMode;
+      bucketCount.value = String(savedSettings.bucketCount);
+      rankSortColumn.value = String(savedSettings.rankSortColumn || savedSettings.excelDataColumn || 1);
+      rankSortDirection.value = savedSettings.rankSortDirection || "asc";
+      rankVisibleRows.value = String(savedSettings.rankVisibleRows || 10);
+      rankColumnCount.value = String(savedSettings.rankColumnCount || 4);
+      playbackDirection.value = savedSettings.rankSortDirection || "asc";
+      playbackSpeed.value = String(savedSettings.playbackSpeed || 500);
+      playbackDelay.value = String(savedSettings.playbackDelay || 0);
+      setPlaybackAnimationSettings(savedSettings, false);
+      syncRankColumnTitleInputs(savedSettings.rankColumnTitles, savedSettings.rankColumnWidths);
+      applyRankSettingsToTable(false);
+    }
+
+    function selectLayer(layer) {
+      selectedLayer = layer;
+      refreshCountyStyles();
+      layer.bringToFront?.();
+      showSelectedOutline(layer.feature);
+      const feature = layer.feature;
+      const code = getFeatureCode(feature);
+      const meta = countyMetaByCode.get(code);
+      const data = importedData[code] || {};
+      document.getElementById("infoTitle").textContent = meta?.name || getFeatureName(feature);
+      document.getElementById("infoCode").textContent = code;
+      document.getElementById("infoParent").textContent = meta?.parentName || getParentName(feature);
+      document.getElementById("infoColor").textContent = colors[code] || "-";
+      DATA_KEYS.forEach((key, index) => {
+        const field = document.getElementById(`infoData${index + 1}`);
+        if (field) field.textContent = data?.[key] ?? "-";
+      });
+      infoPanel.classList.remove("hidden");
+    }
+
+    function applyManualColor(layer) {
+      const code = getFeatureCode(layer.feature);
+      colors[code] = colorPicker.value.toLowerCase();
+      saveColors();
+      selectLayer(layer);
+      updateStatus(`已填色：${getFeatureName(layer.feature)}`);
+    }
+
+    function eraseColor(layer) {
+      const code = getFeatureCode(layer.feature);
+      delete colors[code];
+      saveColors();
+      selectLayer(layer);
+      updateLegend([]);
+      updateStatus(`已擦除：${getFeatureName(layer.feature)}`);
+    }
+
+    function onCountyClick(event) {
+      const layer = event.target;
+      if (mode === "fill") {
+        applyManualColor(layer);
+      } else if (mode === "erase") {
+        eraseColor(layer);
+      } else {
+        selectLayer(layer);
+      }
+      L.DomEvent.stopPropagation(event);
+    }
+
+    function onCountyMouseOver(event) {
+      const layer = event.target;
+      layer.setStyle(countyHighlightStyle(layer.feature));
+      layer.bringToFront?.();
+      selectedOutlineLayer?.bringToFront?.();
+    }
+
+    function onCountyMouseOut(event) {
+      const layer = event.target;
+      layer.setStyle(countyStyle(layer.feature));
+      selectedOutlineLayer?.bringToFront?.();
+    }
+
+    function updateStatus(text, progress = null) {
+      statusText.textContent = text;
+      if (progress !== null) {
+        progressFill.style.width = `${clamp(progress, 0, 100)}%`;
+      }
+    }
+
+    function setToggleState(button, visible) {
+      if (!button) return;
+      button.classList.toggle("active", visible);
+      button.setAttribute("aria-pressed", String(visible));
+    }
+
+    function setPanelVisible(panel, button, visible) {
+      if (!panel) return;
+      panel.classList.toggle("hidden", !visible);
+      setToggleState(button, visible);
+      if (visible) {
+        window.setTimeout(() => keepPanelReachable(panel), 0);
+      }
+    }
+
+    function setFineZoomVisible(visible) {
+      if (!fineZoom) return;
+      fineZoom.classList.toggle("hidden", !visible);
+      setToggleState(zoomPanelToggle, visible);
+      if (visible) {
+        window.setTimeout(() => keepPanelReachable(fineZoom), 0);
+      }
+    }
+
+    function setRankPanelVisible(visible) {
+      setPanelVisible(rankPanel, rankButton, visible);
+    }
+
+    function isInteractiveTarget(target) {
+      return Boolean(target.closest("button, input, select, textarea, a, label"));
+    }
+
+    function panelLimits(element) {
+      const rect = element.getBoundingClientRect();
+      return {
+        minX: -rect.width / 2,
+        maxX: window.innerWidth - rect.width / 2,
+        minY: -rect.height / 2,
+        maxY: window.innerHeight - rect.height / 2
+      };
+    }
+
+    function pinPanelAtCurrentPosition(element) {
+      const rect = element.getBoundingClientRect();
+      element.style.left = `${rect.left}px`;
+      element.style.top = `${rect.top}px`;
+      element.style.right = "auto";
+      element.style.bottom = "auto";
+      element.style.width = `${rect.width}px`;
+      element.style.transform = "none";
+    }
+
+    function keepPanelReachable(element) {
+      if (!element || element.classList.contains("hidden")) return;
+      const rect = element.getBoundingClientRect();
+      const limits = panelLimits(element);
+      const nextLeft = clamp(rect.left, limits.minX, limits.maxX);
+      const nextTop = clamp(rect.top, limits.minY, limits.maxY);
+      if (Math.abs(nextLeft - rect.left) > 0.5 || Math.abs(nextTop - rect.top) > 0.5) {
+        pinPanelAtCurrentPosition(element);
+        element.style.left = `${nextLeft}px`;
+        element.style.top = `${nextTop}px`;
+      }
+    }
+
+    function enablePanelDrag(element) {
+      if (!element) return;
+      const allowInteractiveDrag = element === fineZoom;
+      let suppressClick = false;
+      element.classList.add("draggable");
+      element.addEventListener("click", (event) => {
+        if (suppressClick) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          suppressClick = false;
+          return;
+        }
+        event.stopPropagation();
+      }, true);
+      ["dblclick", "wheel"].forEach((type) => {
+        element.addEventListener(type, (event) => event.stopPropagation());
+      });
+      element.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        if (floatingPanelsLocked || event.button !== 0 || (!allowInteractiveDrag && isInteractiveTarget(event.target))) return;
+        const rect = element.getBoundingClientRect();
+        pinPanelAtCurrentPosition(element);
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startLeft = rect.left;
+        const startTop = rect.top;
+        let moved = false;
+        element.classList.add("dragging");
+        element.setPointerCapture?.(event.pointerId);
+        if (!allowInteractiveDrag) {
+          event.preventDefault();
+        }
+
+        function onMove(moveEvent) {
+          const deltaX = moveEvent.clientX - startX;
+          const deltaY = moveEvent.clientY - startY;
+          if (Math.abs(deltaX) + Math.abs(deltaY) > 4) {
+            moved = true;
+            moveEvent.preventDefault();
+          }
+          const limits = panelLimits(element);
+          const nextLeft = clamp(startLeft + deltaX, limits.minX, limits.maxX);
+          const nextTop = clamp(startTop + deltaY, limits.minY, limits.maxY);
+          element.style.left = `${nextLeft}px`;
+          element.style.top = `${nextTop}px`;
+        }
+
+        function onEnd() {
+          element.classList.remove("dragging");
+          element.removeEventListener("pointermove", onMove);
+          element.removeEventListener("pointerup", onEnd);
+          element.removeEventListener("pointercancel", onEnd);
+          suppressClick = moved;
+          if (suppressClick) {
+            window.setTimeout(() => {
+              suppressClick = false;
+            }, 0);
+          }
+        }
+
+        element.addEventListener("pointermove", onMove);
+        element.addEventListener("pointerup", onEnd);
+        element.addEventListener("pointercancel", onEnd);
+      });
+    }
+
+    function floatingPanels() {
+      return [topbar, toolbarOpen, fineZoom, infoPanel, legend, statusPanel, reportPanel, playbackPanel, animationSettingsPanel, rankPanel, rankSettingsPanel, rulesPanel, legendLabelPanel].filter(Boolean);
+    }
+
+    function resetFloatingPositions() {
+      floatingPanels().forEach((element) => {
+        element.style.left = "";
+        element.style.top = "";
+        element.style.right = "";
+        element.style.bottom = "";
+        element.style.width = "";
+        element.style.transform = "";
+      });
+      updateStatus("已恢复浮动控件位置。");
+    }
+
+    function setFloatingPanelsLocked(locked) {
+      floatingPanelsLocked = Boolean(locked);
+      lockFloatingButton.classList.toggle("active", floatingPanelsLocked);
+      lockFloatingButton.textContent = floatingPanelsLocked ? "已锁定" : "锁定";
+      floatingPanels().forEach((element) => {
+        element.classList.toggle("draggable", !floatingPanelsLocked);
+      });
+    }
+
+    function setFloatingCloseButtonsHidden(hidden) {
+      floatingCloseButtonsHidden = Boolean(hidden);
+      document.body.classList.toggle("close-hidden", floatingCloseButtonsHidden);
+      closeButtonsToggle.classList.toggle("active", floatingCloseButtonsHidden);
+      closeButtonsToggle.textContent = floatingCloseButtonsHidden ? "显示×" : "隐藏×";
+      writeJson(`${STORAGE_PREFIX}:hide-close-buttons`, floatingCloseButtonsHidden);
+    }
+
+    function applyLegendVisualSize() {
+      const safe = sanitizeSettings(savedSettings);
+      savedSettings.legendBarWidth = safe.legendBarWidth;
+      savedSettings.legendBarHeight = safe.legendBarHeight;
+      savedSettings.legendLabelFontSize = safe.legendLabelFontSize;
+      legend.style.width = `min(${safe.legendBarWidth}px, calc(100vw - 28px))`;
+      legend.style.setProperty("--legend-bar-height", `${safe.legendBarHeight}px`);
+      legend.style.setProperty("--legend-label-font-size", `${safe.legendLabelFontSize}px`);
+      legendLabels.style.height = `${Math.max(28, safe.legendLabelFontSize + 19)}px`;
+    }
+
+    function syncLegendSizeInputs() {
+      const safe = sanitizeSettings(savedSettings);
+      legendBarWidthInput.value = String(safe.legendBarWidth);
+      legendBarHeightInput.value = String(safe.legendBarHeight);
+      legendLabelFontSizeInput.value = String(safe.legendLabelFontSize);
+    }
+
+    function collectLegendSizeInputSettings() {
+      return sanitizeSettings({
+        ...savedSettings,
+        legendBarWidth: legendBarWidthInput.value,
+        legendBarHeight: legendBarHeightInput.value,
+        legendLabelFontSize: legendLabelFontSizeInput.value
+      });
+    }
+
+    function renderLegendLabelEditor() {
+      syncLegendSizeInputs();
+      const defaults = latestLegendDefaultLabels.length
+        ? latestLegendDefaultLabels
+        : Array.from({ length: savedSettings.bucketCount + 1 }, (_, index) => index === 0 || index === savedSettings.bucketCount ? "" : `交界${index}`);
+      const values = savedSettings.legendLabels.length === defaults.length ? savedSettings.legendLabels : defaults;
+      legendLabelFields.innerHTML = "";
+      values.forEach((value, index) => {
+        const label = document.createElement("label");
+        label.className = "settings-field";
+        label.textContent = index === 0 ? "左端" : (index === values.length - 1 ? "右端" : `交界${index}`);
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = value;
+        label.appendChild(input);
+        legendLabelFields.appendChild(label);
+      });
+    }
+
+    function saveLegendLabelDisplay() {
+      Object.assign(savedSettings, collectLegendSizeInputSettings());
+      savedSettings.legendLabels = Array.from(legendLabelFields.querySelectorAll("input")).map((input) => input.value);
+      writeJson(SETTINGS_KEY, savedSettings);
+      applyLegendVisualSize();
+      if (latestLegend.length) {
+        const markers = latestLegend[0].markers || [];
+        markers.forEach((marker, index) => {
+          marker.label = savedSettings.legendLabels[index] ?? marker.label;
+        });
+        updateLegend(latestLegend);
+      }
+      updateStatus("已保存色条数字显示。");
+    }
+
+    function buildPalette() {
+      palette.innerHTML = "";
+      MANUAL_SWATCHES.forEach((color) => {
+        const swatch = document.createElement("button");
+        swatch.className = "swatch";
+        swatch.type = "button";
+        swatch.style.background = color;
+        swatch.title = color;
+        swatch.addEventListener("click", () => {
+          colorPicker.value = color;
+          palette.querySelectorAll(".swatch").forEach((item) => item.classList.remove("active"));
+          swatch.classList.add("active");
+        });
+        if (color === colorPicker.value) swatch.classList.add("active");
+        palette.appendChild(swatch);
+      });
+    }
+
+    function parseNumber(value) {
+      const text = String(value ?? "")
+        .trim()
+        .replace(/,/g, "")
+        .replace(/%$/, "")
+        .replace(/万/g, "0000");
+      if (!text) return NaN;
+      const number = Number(text);
+      return Number.isFinite(number) ? number : NaN;
+    }
+
+    function interpolateColor(a, b, t) {
+      const c1 = a.match(/\w\w/g).map((x) => parseInt(x, 16));
+      const c2 = b.match(/\w\w/g).map((x) => parseInt(x, 16));
+      const rgb = c1.map((value, index) => Math.round(value + (c2[index] - value) * t));
+      return `#${rgb.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+    }
+
+    function parseBoundaryList(text) {
+      return String(text || "")
+        .split(/[\s,，;；|]+/)
+        .map(parseNumber)
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b);
+    }
+
+    function numericBoundaries(min, max) {
+      const count = clamp(Math.floor(Number(savedSettings.bucketCount) || 7), 2, 12);
+      const custom = parseBoundaryList(savedSettings.bucketBoundaries);
+      if (custom.length >= count + 1) {
+        return custom.slice(0, count + 1);
+      }
+      if (custom.length >= count - 1) {
+        return [min, ...custom.slice(0, count - 1), max].sort((a, b) => a - b);
+      }
+      return Array.from({ length: count + 1 }, (_, index) => min + ((max - min) * index) / count);
+    }
+
+    function activeBucketColors() {
+      return Array.from({ length: savedSettings.bucketCount }, (_, index) => {
+        const color = savedSettings.bucketColors[index];
+        return isHexColor(color) ? color : DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+      });
+    }
+
+    function colorForNumber(value, min, max) {
+      const colorsForBuckets = activeBucketColors();
+      if (max === min) return colorsForBuckets[colorsForBuckets.length - 1];
+      const ratio = clamp((value - min) / (max - min), 0, 1);
+      if (savedSettings.numericMode === "gradient") {
+        return interpolateColor(savedSettings.gradientLowColor, savedSettings.gradientHighColor, ratio);
+      }
+      const boundaries = numericBoundaries(min, max);
+      let index = boundaries.findIndex((boundary, boundaryIndex) => boundaryIndex > 0 && value <= boundary) - 1;
+      if (index < 0) {
+        index = colorsForBuckets.length - 1;
+      }
+      return colorsForBuckets[clamp(index, 0, colorsForBuckets.length - 1)];
+    }
+
+    function formatNumber(value) {
+      if (!Number.isFinite(value)) return "";
+      const rounded = Math.round(value * 100) / 100;
+      return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function updateLegend(items) {
+      applyLegendVisualSize();
+      latestLegend = Array.isArray(items) ? items : [];
+      if (!latestLegend.length) {
+        legend.classList.add("hidden");
+        legendBar.innerHTML = "";
+        legendLabels.innerHTML = "";
+        return;
+      }
+
+      legend.classList.remove("hidden");
+      legendBar.innerHTML = "";
+      legendLabels.innerHTML = "";
+      legendBar.style.gridTemplateColumns = `repeat(${latestLegend.length}, minmax(0, 1fr))`;
+      latestLegend.forEach((item) => {
+        const segment = document.createElement("span");
+        segment.style.background = item.color;
+        legendBar.appendChild(segment);
+      });
+
+      const markers = latestLegend[0].markers || [];
+      markers.forEach((marker, index) => {
+        const label = document.createElement("span");
+        label.style.left = `${marker.position}%`;
+        label.textContent = marker.label;
+        legendLabels.appendChild(label);
+      });
+      renderLegendLabelEditor();
+    }
+
+    function buildBucketLegend(min, max) {
+      const boundaries = numericBoundaries(min, max);
+      const count = boundaries.length - 1;
+      const items = Array.from({ length: count }, (_, index) => ({
+        color: colorForNumber((boundaries[index] + boundaries[index + 1]) / 2, min, max)
+      }));
+      latestLegendDefaultLabels = boundaries.map(formatNumber);
+      const labels = savedSettings.legendLabels.length === latestLegendDefaultLabels.length
+        ? savedSettings.legendLabels
+        : latestLegendDefaultLabels;
+      const markers = boundaries.map((boundary, index) => ({
+        position: (index / count) * 100,
+        label: labels[index] ?? formatNumber(boundary)
+      }));
+      items[0].markers = markers;
+      updateLegend(items);
+    }
+
+    function parseRuleLines() {
+      return String(savedSettings.rulesText || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const match = line.match(/^(.+?)\s*=\s*(#[0-9a-f]{6})$/i);
+          if (!match) return null;
+          return { test: match[1].trim(), color: match[2].toLowerCase() };
+        })
+        .filter(Boolean);
+    }
+
+    function ruleColorForValue(value) {
+      const text = String(value ?? "").trim();
+      const number = parseNumber(text);
+      for (const rule of parseRuleLines()) {
+        const test = rule.test;
+        const compare = test.match(/^(>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+        if (compare && Number.isFinite(number)) {
+          const target = Number(compare[2]);
+          if (compare[1] === ">=" && number >= target) return rule.color;
+          if (compare[1] === "<=" && number <= target) return rule.color;
+          if (compare[1] === ">" && number > target) return rule.color;
+          if (compare[1] === "<" && number < target) return rule.color;
+          continue;
+        }
+        const range = test.match(/^(-?\d+(?:\.\d+)?)\s*[-~至]\s*(-?\d+(?:\.\d+)?)$/);
+        if (range && Number.isFinite(number)) {
+          const min = Math.min(Number(range[1]), Number(range[2]));
+          const max = Math.max(Number(range[1]), Number(range[2]));
+          if (number >= min && number <= max) return rule.color;
+          continue;
+        }
+        if (test === "其他" || test.toLowerCase() === "other") {
+          return rule.color;
+        }
+        if (text.includes(test)) {
+          return rule.color;
+        }
+      }
+      return "";
+    }
+
+    function reapplyImportedDataColors() {
+      const fillIndex = clamp(Number(savedSettings.excelDataColumn) || 1, 1, RANK_DATA_COLUMN_COUNT);
+      const matched = Object.entries(importedData)
+        .filter(([code]) => countyLayerByCode.has(code))
+        .map(([code, data]) => ({ code, ...data, value: data?.[`data${fillIndex}`] ?? "" }));
+      if (!matched.length) return false;
+      const applied = applyColorsFromMatchedRows(matched, fillIndex, { keepStatus: true });
+      preparePlaybackRecords(applied, { progressFromStoredColors: true });
+      refreshCountyStyles();
+      return true;
+    }
+
+    function colorAssignmentsFromMatchedRows(matched, options = {}) {
+      const assignments = [];
+      const uncolored = [];
+      matched.forEach((item) => {
+        const ruleColor = ruleColorForValue(item.value);
+        if (ruleColor) {
+          assignments.push({
+            ...item,
+            fillColor: ruleColor,
+            number: parseNumber(item.value)
+          });
+        } else {
+          uncolored.push(item);
+        }
+      });
+
+      const numericValues = uncolored
+        .map((item) => ({ ...item, number: parseNumber(item.value) }))
+        .filter((item) => Number.isFinite(item.number));
+
+      if (numericValues.length === uncolored.length && numericValues.length) {
+        const min = Math.min(...numericValues.map((item) => item.number));
+        const max = Math.max(...numericValues.map((item) => item.number));
+        numericValues.forEach((item) => {
+          assignments.push({
+            ...item,
+            fillColor: colorForNumber(item.number, min, max)
+          });
+        });
+        if (options.updateLegend !== false) {
+          buildBucketLegend(min, max);
+        }
+      } else if (uncolored.length) {
+        const categoryColors = new Map();
+        uncolored.forEach((item) => {
+          const value = String(item.value ?? "").trim();
+          if (isHexColor(value)) {
+            assignments.push({
+              ...item,
+              fillColor: value.toLowerCase(),
+              number: parseNumber(item.value)
+            });
+          } else {
+            if (!categoryColors.has(value)) {
+              categoryColors.set(value, activeBucketColors()[categoryColors.size % activeBucketColors().length]);
+            }
+            assignments.push({
+              ...item,
+              fillColor: categoryColors.get(value),
+              number: parseNumber(item.value)
+            });
+          }
+        });
+        if (options.updateLegend !== false) {
+          updateLegend([]);
+        }
+      } else {
+        if (options.updateLegend !== false) {
+          updateLegend([]);
+        }
+      }
+
+      return assignments;
+    }
+
+    function applyColorsFromMatchedRows(matched, fillIndex, options = {}) {
+      const assignments = colorAssignmentsFromMatchedRows(matched, { updateLegend: options.updateLegend !== false });
+      assignments.forEach((item) => {
+        colors[item.code] = item.fillColor;
+      });
+      saveColors();
+      if (!options.keepStatus) {
+        updateStatus(`已按数据${fillIndex}重新填色。`);
+      }
+      return assignments;
+    }
+
+    function loadXlsxLibrary() {
+      if (window.XLSX) return Promise.resolve(window.XLSX);
+      if (!xlsxLoadPromise) {
+        updateStatus("正在加载 Excel 读取组件...");
+        xlsxLoadPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = XLSX_SCRIPT_URL;
+          script.async = true;
+          script.onload = () => resolve(window.XLSX);
+          script.onerror = () => reject(new Error("Excel 读取组件加载失败"));
+          document.head.appendChild(script);
+        });
+      }
+      return xlsxLoadPromise;
+    }
+
+    function likelyHeader(row, columns = getImportColumnIndexes()) {
+      const first = String(row?.[columns.name] ?? "");
+      const dataCells = DATA_KEYS.map((key) => row?.[columns[key]]);
+      return /名称|县|区|市|行政区|adcode|代码/i.test(first)
+        && dataCells.some((cell) => /数据|值|指标|GDP|面积|人口|所属|地市|城市|排名|名次/i.test(String(cell)));
+    }
+
+    function isDefaultRankTitle(title, columnIndex) {
+      const text = normalizeText(title);
+      const defaults = new Set([
+        normalizeText(RANK_COLUMNS[columnIndex]?.label),
+        `数据${columnIndex - 2}`,
+        `列${columnIndex + 1}`
+      ]);
+      if (columnIndex === 3) {
+        defaults.add("数据");
+      }
+      return !text || defaults.has(text);
+    }
+
+    function applyImportedDataColumnTitles(dataLabels) {
+      const labels = Array.isArray(dataLabels)
+        ? dataLabels.map((label) => {
+          const text = String(label ?? "").trim();
+          return text && !isAuxiliaryImportHeader(text) ? text : "";
+        }).slice(0, RANK_DATA_COLUMN_COUNT)
+        : [];
+      const usefulLabels = labels.filter(Boolean);
+      if (!usefulLabels.length) return;
+
+      const neededColumns = Math.min(RANK_COLUMNS.length, 3 + Math.max(1, usefulLabels.length));
+      if (getRankColumnCount() !== neededColumns) {
+        rankColumnCount.value = String(neededColumns);
+        syncRankColumnTitleInputs();
+      }
+
+      const titleInputs = Array.from(rankColumnTitleFields.querySelectorAll("input[data-rank-column-index]"));
+      labels.forEach((label, dataIndex) => {
+        const columnIndex = 3 + dataIndex;
+        const input = titleInputs[columnIndex];
+        const nextTitle = String(label || "").trim();
+        if (input && nextTitle && isDefaultRankTitle(input.value, columnIndex)) {
+          input.value = nextTitle;
+        }
+      });
+      applyRankSettingsToTable(true);
+    }
+
+    async function importExcel(file) {
+      try {
+        await loadXlsxLibrary();
+      } catch (error) {
+        updateStatus("Excel 读取组件加载失败，请确认网络可访问 jsDelivr。");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const workbook = XLSX.read(reader.result, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+          importExcelRows(rows);
+        } catch (error) {
+          console.error(error);
+          updateStatus("Excel 解析失败，请检查文件格式。");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function importExcelRows(rows) {
+      latestReportRows = [];
+      const importColumnSettings = {
+        importNameColumn: ruleImportNameColumn ? ruleImportNameColumn.value : savedSettings.importNameColumn,
+        ...Object.fromEntries(ruleImportDataColumns.map((input, index) => [
+          `importData${index + 1}Column`,
+          input?.value || savedSettings[`importData${index + 1}Column`] || DEFAULT_IMPORT_DATA_COLUMNS[index]
+        ]))
+      };
+      let importColumns = getImportColumnIndexes(importColumnSettings);
+      const dataRows = rows
+        .map((row, index) => ({ row, rowNumber: index + 1 }))
+        .filter(({ row }) => row.some((cell) => String(cell ?? "").trim()));
+
+      if (dataRows.length && likelyHeader(dataRows[0].row, importColumns)) {
+        const header = dataRows.shift().row;
+        importColumns = importColumnsFromHeader(header, importColumns);
+        applyImportedDataColumnTitles(DATA_KEYS.map((key) => header[importColumns[key]]));
+      }
+
+      const fillIndex = clamp(Number(excelDataColumn.value) || 1, 1, RANK_DATA_COLUMN_COUNT);
+      const matched = [];
+      const unmatched = [];
+
+      dataRows.forEach(({ row, rowNumber }) => {
+        const name = row[importColumns.name];
+        const code = matchCounty(name);
+        const data = {
+          rowNumber,
+          sourceName: String(name ?? "").trim(),
+          ...Object.fromEntries(DATA_KEYS.map((key) => [key, cellByIndex(row, importColumns[key])]))
+        };
+
+        if (!code) {
+          unmatched.push({ rowNumber, ...data });
+          latestReportRows.push({ rowNumber, matchedName: "", ...data });
+          return;
+        }
+
+        importedData[code] = {
+          ...data,
+          matchedName: countyMetaByCode.get(code)?.name || code
+        };
+        matched.push({ rowNumber, code, ...data, value: data[`data${fillIndex}`] });
+        latestReportRows.push({
+          rowNumber,
+          matchedName: countyMetaByCode.get(code)?.name || code,
+          ...data
+        });
+      });
+
+      const applied = applyColorsFromMatchedRows(matched, fillIndex, { keepStatus: true });
+
+      saveData();
+      saveSettings();
+      refreshCountyStyles();
+      preparePlaybackRecords(applied, { progressFromStoredColors: true });
+      syncReportButton();
+      renderReport();
+      renderRankTable();
+      updateStatus(`Excel 导入完成：匹配 ${matched.length} 行，未匹配 ${unmatched.length} 行，已按数据${fillIndex}填色。`, 100);
+    }
+
+    function rebuildReportRowsFromImportedData() {
+      if (latestReportRows.length || !Object.keys(importedData).length) return;
+      latestReportRows = Object.entries(importedData).map(([code, data], index) => {
+        const meta = countyMetaByCode.get(code);
+        return {
+          rowNumber: data.rowNumber || index + 1,
+          sourceName: data.sourceName || meta?.name || code,
+          matchedName: data.matchedName || meta?.name || code,
+          ...Object.fromEntries(DATA_KEYS.map((key) => [key, data?.[key] ?? ""]))
+        };
+      });
+    }
+
+    function hasReportRows() {
+      return Boolean(latestReportRows.length || Object.keys(importedData).length);
+    }
+
+    function syncReportButton() {
+      reportButton.classList.toggle("hidden", !hasReportRows());
+    }
+
+    function renderReport() {
+      rebuildReportRowsFromImportedData();
+      if (!latestReportRows.length) {
+        reportSummary.textContent = "还没有导入县级数据。";
+        reportBody.innerHTML = "";
+        return;
+      }
+      reportSummary.textContent = `共 ${latestReportRows.length} 行；已匹配 ${latestReportRows.filter((row) => row.matchedName).length} 行，未匹配 ${latestReportRows.filter((row) => !row.matchedName).length} 行。`;
+      reportBody.innerHTML = "";
+      latestReportRows.forEach((row) => {
+        const tr = document.createElement("tr");
+        [row.rowNumber, row.sourceName, row.matchedName || "未匹配", ...DATA_KEYS.map((key) => row[key])].forEach((value) => {
+          const td = document.createElement("td");
+          td.textContent = value ?? "";
+          tr.appendChild(td);
+        });
+        reportBody.appendChild(tr);
+      });
+    }
+
+    function boundedInteger(value, min, max, fallback) {
+      const number = Math.round(Number(value));
+      if (!Number.isFinite(number)) {
+        return fallback;
+      }
+      return Math.max(min, Math.min(max, number));
+    }
+
+    function getRankVisibleRowCount() {
+      return boundedInteger(rankVisibleRows.value, 1, 100, 10);
+    }
+
+    function getRankColumnCount() {
+      return boundedInteger(rankColumnCount.value, 1, RANK_COLUMNS.length, savedSettings.rankColumnCount || 4);
+    }
+
+    function syncRankColumnTitleInputs(nextTitles, nextWidths) {
+      const count = getRankColumnCount();
+      rankColumnCount.value = String(count);
+      const savedTitles = Array.isArray(nextTitles) ? nextTitles : [];
+      const savedWidths = Array.isArray(nextWidths) ? nextWidths : [];
+      const existingInputs = Array.from(rankColumnTitleFields.querySelectorAll("input"));
+      const existingTitles = existingInputs.filter((input) => input.dataset.rankColumnIndex).map((input) => input.value);
+      const existingWidths = existingInputs.filter((input) => input.dataset.rankColumnWidthIndex).map((input) => input.value);
+      rankColumnTitleFields.innerHTML = "";
+
+      for (let index = 0; index < count; index += 1) {
+        const titleField = document.createElement("label");
+        titleField.className = "rank-settings-field";
+        titleField.textContent = `第${index + 1}列标题`;
+
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.value = savedTitles[index] || existingTitles[index] || RANK_COLUMNS[index].label;
+        titleInput.dataset.rankColumnIndex = String(index);
+        titleInput.setAttribute("aria-label", `第${index + 1}列标题`);
+        titleField.appendChild(titleInput);
+        rankColumnTitleFields.appendChild(titleField);
+
+        const widthField = document.createElement("label");
+        widthField.className = "rank-settings-field";
+        widthField.textContent = `第${index + 1}列宽度`;
+
+        const widthInput = document.createElement("input");
+        widthInput.type = "number";
+        widthInput.min = "20";
+        widthInput.max = "220";
+        widthInput.step = "1";
+        widthInput.value = String(savedWidths[index] || existingWidths[index] || RANK_COLUMN_WIDTHS[index] || 70);
+        widthInput.dataset.rankColumnWidthIndex = String(index);
+        widthInput.setAttribute("aria-label", `第${index + 1}列宽度`);
+        widthField.appendChild(widthInput);
+        rankColumnTitleFields.appendChild(widthField);
+      }
+    }
+
+    function getRankColumnTitles() {
+      const inputs = Array.from(rankColumnTitleFields.querySelectorAll("input[data-rank-column-index]"));
+      return RANK_COLUMNS.map((column, index) => inputs[index]?.value.trim() || savedSettings.rankColumnTitles?.[index] || column.label);
+    }
+
+    function getRankColumnWidths() {
+      const inputs = Array.from(rankColumnTitleFields.querySelectorAll("input[data-rank-column-width-index]"));
+      return RANK_COLUMNS.map((column, index) => {
+        const value = Number(inputs[index]?.value ?? savedSettings.rankColumnWidths?.[index]);
+        return Number.isFinite(value) && value > 0 ? value : (RANK_COLUMN_WIDTHS[index] || 70);
+      });
+    }
+
+    function syncRankTableColumnWidths(columnCount = getRankColumnCount()) {
+      let colgroup = rankTable.querySelector("colgroup");
+      if (!colgroup) {
+        colgroup = document.createElement("colgroup");
+        rankTable.prepend(colgroup);
+      }
+      colgroup.innerHTML = "";
+      const widths = getRankColumnWidths().slice(0, columnCount);
+      const totalWidth = widths.reduce((sum, width) => sum + (width || 70), 0);
+      rankTable.style.width = `${totalWidth}px`;
+      for (let index = 0; index < columnCount; index += 1) {
+        const column = document.createElement("col");
+        column.style.width = `${widths[index] || 70}px`;
+        colgroup.appendChild(column);
+      }
+    }
+
+    function applyRankSettingsToTable(persist = false) {
+      rankVisibleRows.value = String(getRankVisibleRowCount());
+      syncRankColumnTitleInputs();
+      syncRankTableColumnWidths();
+      rankTableHeaderRow.innerHTML = "";
+      getRankColumnTitles().slice(0, getRankColumnCount()).forEach((title) => {
+        const cell = document.createElement("th");
+        cell.textContent = title;
+        rankTableHeaderRow.appendChild(cell);
+      });
+      renderRankTable(Number(playbackRange.value) || 0);
+      if (persist) {
+        saveSettings();
+      }
+    }
+
+    function rankColumnValue(record, index) {
+      if (index === 0) return String(record.rank ?? "");
+      if (index === 1) {
+        const rank = record.parentRank ?? "";
+        const name = record.parentRankName || shortParentRankName(record.parentName);
+        return rank ? `${name}${rank}` : name;
+      }
+      if (index === 2) return String(record.name ?? "");
+      if (index >= RANK_BASE_COLUMN_COUNT && index < RANK_BASE_COLUMN_COUNT + RANK_DATA_COLUMN_COUNT) {
+        return String(record[`data${index - RANK_BASE_COLUMN_COUNT + 1}`] ?? "");
+      }
+      return "";
+    }
+
+    function selectedRankColumn() {
+      return clamp(Math.floor(Number(rankSortColumn.value) || savedSettings.excelDataColumn || 1), 1, RANK_DATA_COLUMN_COUNT);
+    }
+
+    function selectedPlaybackDirection() {
+      return playbackDirection.value === "asc" || rankSortDirection.value === "asc" ? "asc" : "desc";
+    }
+
+    function matchedRowsFromImportedData(fillIndex = selectedRankColumn()) {
+      const sortKey = `data${fillIndex}`;
+      return Object.entries(importedData)
+        .filter(([code]) => !countyLayerByCode.size || countyLayerByCode.has(code))
+        .map(([code, data]) => {
+          const meta = countyMetaByCode.get(code);
+          const value = data?.[sortKey] ?? "";
+          return {
+            code,
+            sourceName: data?.sourceName || meta?.name || code,
+            matchedName: data?.matchedName || meta?.name || code,
+            name: meta?.name || data?.matchedName || data?.sourceName || code,
+            parentName: meta?.parentName || "",
+            ...Object.fromEntries(DATA_KEYS.map((key) => [key, data?.[key] ?? ""])),
+            value,
+            number: parseNumber(value)
+          };
+        });
+    }
+
+    function compareRankDescending(a, b) {
+      const aNumeric = Number.isFinite(a.number);
+      const bNumeric = Number.isFinite(b.number);
+      if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
+      if (aNumeric && bNumeric) return b.number - a.number;
+      return String(b.value ?? "").localeCompare(String(a.value ?? ""), "zh-Hans-CN", { numeric: true });
+    }
+
+    function comparePlaybackOrder(a, b) {
+      const direction = selectedPlaybackDirection();
+      const descending = compareRankDescending(a, b);
+      return direction === "asc" ? -descending : descending;
+    }
+
+    function rankValueKey(row) {
+      return Number.isFinite(row.number)
+        ? `n:${row.number}`
+        : `s:${String(row.value ?? "").trim()}`;
+    }
+
+    function assignPlaybackRanks(records) {
+      const ranked = [...records].sort(compareRankDescending);
+      let lastKey = "";
+      let lastRank = 0;
+      ranked.forEach((row, index) => {
+        const key = rankValueKey(row);
+        if (index === 0 || key !== lastKey) {
+          lastRank = index + 1;
+          lastKey = key;
+        }
+        row.rank = lastRank;
+      });
+    }
+
+    function assignParentRanks(records) {
+      const groups = new Map();
+      records.forEach((row) => {
+        const key = row.parentName || "";
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key).push(row);
+      });
+      groups.forEach((rows, parentName) => {
+        const ranked = [...rows].sort(compareRankDescending);
+        let lastKey = "";
+        let lastRank = 0;
+        ranked.forEach((row, index) => {
+          const key = rankValueKey(row);
+          if (index === 0 || key !== lastKey) {
+            lastRank = index + 1;
+            lastKey = key;
+          }
+          row.parentRank = lastRank;
+          row.parentRankName = shortParentRankName(parentName);
+        });
+      });
+    }
+
+    function playbackProgressFromStoredColors() {
+      let count = 0;
+      for (const record of playbackRecords) {
+        if (String(colors[record.code] || "").toLowerCase() !== String(record.fillColor || "").toLowerCase()) {
+          break;
+        }
+        count += 1;
+      }
+      return count;
+    }
+
+    function preparePlaybackRecords(appliedRecords = null, options = {}) {
+      const fillIndex = selectedRankColumn();
+      const baseRecords = Array.isArray(appliedRecords) && appliedRecords.length
+        ? appliedRecords
+        : colorAssignmentsFromMatchedRows(matchedRowsFromImportedData(fillIndex), { updateLegend: options.updateLegend !== false });
+      playbackRecords = baseRecords
+        .filter((record) => record?.code)
+        .map((record) => {
+          const meta = countyMetaByCode.get(record.code);
+          return {
+            ...record,
+            name: meta?.name || record.matchedName || record.sourceName || record.code,
+            parentName: meta?.parentName || record.parentName || "",
+            number: Number.isFinite(record.number) ? record.number : parseNumber(record.value)
+          };
+        });
+      assignPlaybackRanks(playbackRecords);
+      assignParentRanks(playbackRecords);
+      playbackRecords.sort(comparePlaybackOrder);
+      const progress = options.progressFromStoredColors
+        ? playbackProgressFromStoredColors()
+        : clamp(Math.floor(Number(options.progress ?? playbackRecords.length) || 0), 0, playbackRecords.length);
+      updatePlaybackUI(progress);
+      if (!options.skipRender) {
+        renderRankTable(progress);
+      }
+      return playbackRecords;
+    }
+
+    function updatePlaybackUI(count = Number(playbackRange.value) || 0) {
+      const bounded = clamp(Math.floor(Number(count) || 0), 0, playbackRecords.length);
+      playbackRange.max = String(playbackRecords.length);
+      playbackRange.value = String(bounded);
+      playbackCount.textContent = `${bounded} / ${playbackRecords.length}`;
+      if (!playbackRecords.length) {
+        playButton.textContent = "播放";
+        setRankPanelVisible(false);
+      }
+    }
+
+    function renderRankTable(count = null) {
+      let requestedCount = count;
+      if (!playbackRecords.length && Object.keys(importedData).length) {
+        preparePlaybackRecords(null, { progressFromStoredColors: true, skipRender: true });
+        if (requestedCount === null) {
+          requestedCount = Number(playbackRange.value) || 0;
+        }
+      }
+      const visibleRows = getRankVisibleRowCount();
+      const columnCount = getRankColumnCount();
+      const bounded = clamp(Math.floor(Number(requestedCount ?? playbackRange.value) || 0), 0, playbackRecords.length);
+      savedSettings.rankSortColumn = selectedRankColumn();
+      savedSettings.rankSortDirection = selectedPlaybackDirection();
+      savedSettings.rankVisibleRows = visibleRows;
+      savedSettings.rankColumnCount = columnCount;
+      savedSettings.rankColumnTitles = getRankColumnTitles();
+      savedSettings.rankColumnWidths = getRankColumnWidths();
+      syncRankTableColumnWidths(columnCount);
+      rankBody.innerHTML = "";
+
+      if (!playbackRecords.length) {
+        rankEmpty.textContent = "导入 Excel 后，这里会显示播放榜单。";
+        rankEmpty.style.display = "block";
+        updatePlaybackUI(0);
+        return;
+      }
+
+      const recentRows = playbackRecords.slice(Math.max(0, bounded - visibleRows), bounded).reverse();
+      rankEmpty.textContent = recentRows.length ? "" : "拖动进度条或点击播放后，这里会显示已经出现的县级区域。";
+      rankEmpty.style.display = recentRows.length ? "none" : "block";
+      recentRows.forEach((row) => {
+        const tr = document.createElement("tr");
+        for (let index = 0; index < columnCount; index += 1) {
+          const td = document.createElement("td");
+          const value = rankColumnValue(row, index);
+          td.textContent = value;
+          td.title = value;
+          tr.appendChild(td);
+        }
+        rankBody.appendChild(tr);
+      });
+    }
+
+    function setPlaybackProgress(count, options = {}) {
+      if (!playbackRecords.length && Object.keys(importedData).length) {
+        preparePlaybackRecords(null, { progressFromStoredColors: true, skipRender: true });
+      }
+      const previous = Number(playbackRange.value) || 0;
+      const bounded = clamp(Math.floor(Number(count) || 0), 0, playbackRecords.length);
+      const playbackCodes = new Set(playbackRecords.map((record) => record.code));
+      playbackCodes.forEach((code) => delete colors[code]);
+      playbackRecords.slice(0, bounded).forEach((record) => {
+        colors[record.code] = record.fillColor;
+      });
+      clearSelectedOutline();
+      selectedLayer = null;
+      refreshCountyStyles();
+      updatePlaybackUI(bounded);
+      renderRankTable(bounded);
+      if (options.animate && bounded > previous) {
+        animatePlaybackRecord(playbackRecords[bounded - 1]);
+      } else if (bounded === 0) {
+        clearPlaybackAnimationLayer();
+      }
+      if (options.persist) {
+        saveColors();
+      }
+    }
+
+    function stopPlayback() {
+      if (playbackStartTimer) {
+        clearTimeout(playbackStartTimer);
+        playbackStartTimer = null;
+      }
+      if (playbackTimer) {
+        clearInterval(playbackTimer);
+        playbackTimer = null;
+      }
+      playButton.textContent = "播放";
+    }
+
+    function beginPlaybackInterval() {
+      playbackStartTimer = null;
+      playButton.textContent = "暂停";
+      playbackTimer = setInterval(() => {
+        const next = Number(playbackRange.value) + 1;
+        setPlaybackProgress(next, { animate: true });
+        if (next >= playbackRecords.length) {
+          stopPlayback();
+          saveColors();
+        }
+      }, Math.max(1, Number(playbackSpeed.value) || 500));
+    }
+
+    function startPlayback() {
+      if (!playbackRecords.length) {
+        preparePlaybackRecords(null, { progressFromStoredColors: true });
+      }
+      if (!playbackRecords.length) {
+        updateStatus("请先导入县级 Excel 数据。");
+        return;
+      }
+      if (Number(playbackRange.value) >= playbackRecords.length) {
+        setPlaybackProgress(0);
+      }
+      const delay = Math.max(0, Number(playbackDelay.value) || 0);
+      if (delay > 0) {
+        playButton.textContent = "等待";
+        playbackStartTimer = setTimeout(beginPlaybackInterval, delay);
+        return;
+      }
+      beginPlaybackInterval();
+    }
+
+    function saveRankViewSettings() {
+      stopPlayback();
+      playbackDirection.value = rankSortDirection.value;
+      Object.assign(savedSettings, {
+        rankSortColumn: selectedRankColumn(),
+        rankSortDirection: selectedPlaybackDirection(),
+        rankVisibleRows: getRankVisibleRowCount(),
+        rankColumnCount: getRankColumnCount(),
+        rankColumnTitles: getRankColumnTitles(),
+        rankColumnWidths: getRankColumnWidths(),
+        playbackSpeed: clamp(Math.floor(Number(playbackSpeed.value) || 500), 1, 600000),
+        playbackDelay: clamp(Math.floor(Number(playbackDelay.value) || 0), 0, 600000)
+      });
+      preparePlaybackRecords(null, { progressFromStoredColors: true });
+      saveSettings();
+    }
+
+    function exportColors() {
+      const payload = {
+        province: PROVINCE,
+        colors,
+        importedData,
+        settings: readJson(SETTINGS_KEY, {}),
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${PROVINCE.name}县级填色方案.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importColors(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const payload = JSON.parse(reader.result);
+          Object.keys(colors).forEach((key) => delete colors[key]);
+          Object.entries(payload.colors || payload || {}).forEach(([code, color]) => {
+            const adcode = asAdcode(code);
+            if (countyLayerByCode.has(adcode) && isHexColor(color)) {
+              colors[adcode] = String(color).toLowerCase();
+            }
+          });
+          Object.keys(importedData).forEach((key) => delete importedData[key]);
+          Object.assign(importedData, payload.importedData || {});
+          if (payload.settings && typeof payload.settings === "object") {
+            Object.assign(savedSettings, sanitizeSettings({ ...savedSettings, ...payload.settings }));
+            writeJson(SETTINGS_KEY, savedSettings);
+            applySettingsToTopControls();
+            syncRulePanelFromSettings();
+            applyLegendVisualSize();
+            renderLegendLabelEditor();
+          }
+          latestReportRows = [];
+          saveColors();
+          saveData();
+          refreshCountyStyles();
+          preparePlaybackRecords(null, { progressFromStoredColors: true });
+          syncReportButton();
+          renderReport();
+          renderRankTable();
+          updateStatus(`已导入填色方案：${Object.keys(colors).length} 个县级区域。`);
+        } catch (error) {
+          updateStatus("填色方案导入失败，请确认 JSON 格式。");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    async function initMap() {
+      try {
+        updateStatus(`正在加载${PROVINCE.name}边界...`, 8);
+        const provinceGeo = await fetchGeoJson(PROVINCE.adcode, false);
+        const provinceFullGeo = await fetchGeoJson(PROVINCE.adcode, true);
+        const provinceChildren = (provinceFullGeo.features || []).filter((feature) => feature.geometry);
+
+        provinceLayer = L.geoJSON(provinceGeo, { style: provinceStyle }).addTo(map);
+        const cityFeatures = provinceChildren.filter(shouldLoadChildCounties);
+        cityLayer = L.geoJSON(cityFeatures, { style: cityStyle }).addTo(map);
+        provinceBounds = provinceLayer.getBounds();
+        cityFeatures.forEach((feature) => cityCodes.add(getFeatureCode(feature)));
+
+        const countyFeatures = [];
+        provinceChildren.filter((feature) => !shouldLoadChildCounties(feature)).forEach((feature) => {
+          buildCountyIndexes(feature, PROVINCE.name);
+          countyFeatures.push(feature);
+        });
+
+        updateStatus(`正在加载县级边界：0 / ${cityCodes.size}`, 18);
+        let loaded = 0;
+        for (const cityCode of cityCodes) {
+          const parentName = (cityFeatures.find((feature) => getFeatureCode(feature) === cityCode)?.properties?.name) || PROVINCE.name;
+          try {
+            const geo = await fetchGeoJson(cityCode, true);
+            const children = (geo.features || []).filter((feature) => feature.geometry);
+            if (children.length) {
+              children.forEach((feature) => {
+                buildCountyIndexes(feature, parentName);
+                countyFeatures.push(feature);
+              });
+            } else {
+              const fallback = cityFeatures.find((feature) => getFeatureCode(feature) === cityCode);
+              if (fallback) {
+                buildCountyIndexes(fallback, PROVINCE.name);
+                countyFeatures.push(fallback);
+              }
+            }
+          } catch (error) {
+            const fallback = cityFeatures.find((feature) => getFeatureCode(feature) === cityCode);
+            if (fallback) {
+              buildCountyIndexes(fallback, PROVINCE.name);
+              countyFeatures.push(fallback);
+            }
+          }
+          loaded += 1;
+          updateStatus(`正在加载县级边界：${loaded} / ${cityCodes.size}`, 18 + (loaded / cityCodes.size) * 62);
+        }
+
+        countyLayer = L.geoJSON(countyFeatures, {
+          style: countyStyle,
+          onEachFeature(feature, layer) {
+            const code = getFeatureCode(feature);
+            countyLayerByCode.set(code, layer);
+            layer.bindTooltip(getFeatureName(feature), {
+              className: "county-tooltip",
+              sticky: true,
+              direction: "top"
+            });
+            layer.on({
+              mouseover: onCountyMouseOver,
+              mouseout: onCountyMouseOut,
+              click: onCountyClick
+            });
+          }
+        }).addTo(map);
+
+        if (cityLayer) cityLayer.bringToFront();
+        provinceLayer.bringToFront();
+        map.fitBounds(provinceBounds, { padding: [24, 24] });
+        syncReportButton();
+        if (!reportPanel.classList.contains("hidden")) renderReport();
+        renderRankTable();
+        updateStatus(`加载完成：${PROVINCE.name}上级边界 ${cityCodes.size} 个，县级边界 ${countyFeatures.length} 个，已填色 ${Object.keys(colors).length} 个。`, 100);
+      } catch (error) {
+        console.error(error);
+        updateStatus(`${PROVINCE.name}县级边界加载失败，请确认网络可以访问 DataV GeoJSON。`, 100);
+      }
+    }
+
+    document.querySelectorAll("[data-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        mode = button.dataset.mode;
+        document.querySelectorAll("[data-mode]").forEach((item) => item.classList.toggle("active", item === button));
+      });
+    });
+
+    document.getElementById("fitButton").addEventListener("click", () => {
+      if (provinceBounds?.isValid()) map.fitBounds(provinceBounds, { padding: [24, 24] });
+    });
+
+    document.getElementById("mainHomeButton").addEventListener("click", () => {
+      location.href = "index.html";
+    });
+
+    document.getElementById("excelButton").addEventListener("click", () => document.getElementById("excelFile").click());
+    document.getElementById("excelFile").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (file) importExcel(file);
+      event.target.value = "";
+    });
+
+    document.getElementById("exportButton").addEventListener("click", exportColors);
+    document.getElementById("importButton").addEventListener("click", () => document.getElementById("importFile").click());
+    document.getElementById("importFile").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (file) importColors(file);
+      event.target.value = "";
+    });
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      if (!Object.keys(colors).length || confirm("清空所有县级区域填色？")) {
+        stopPlayback();
+        Object.keys(colors).forEach((key) => delete colors[key]);
+        saveColors();
+        refreshCountyStyles();
+        updatePlaybackUI(0);
+        renderRankTable(0);
+        updateLegend([]);
+        updateStatus("已清空所有县级区域填色。");
+      }
+    });
+
+    resetFloatingButton.addEventListener("click", resetFloatingPositions);
+    lockFloatingButton.addEventListener("click", () => setFloatingPanelsLocked(!floatingPanelsLocked));
+    closeButtonsToggle.addEventListener("click", () => setFloatingCloseButtonsHidden(!floatingCloseButtonsHidden));
+
+    zoomPanelToggle.addEventListener("click", () => {
+      setFineZoomVisible(fineZoom.classList.contains("hidden"));
+    });
+
+    fineZoomClose.addEventListener("click", () => {
+      setFineZoomVisible(false);
+    });
+    document.getElementById("infoClose").addEventListener("click", () => infoPanel.classList.add("hidden"));
+    document.getElementById("legendClose").addEventListener("click", () => legend.classList.add("hidden"));
+    document.getElementById("statusClose").addEventListener("click", () => statusPanel.classList.add("hidden"));
+
+    cityToggle.addEventListener("change", () => {
+      if (!cityLayer) return;
+      if (cityToggle.checked) {
+        cityLayer.addTo(map);
+        cityLayer.bringToFront();
+        provinceLayer.bringToFront();
+      } else {
+        cityLayer.remove();
+      }
+    });
+
+    countyToggle.addEventListener("change", () => {
+      if (!countyLayer) return;
+      if (countyToggle.checked) {
+        countyLayer.addTo(map);
+        cityLayer?.bringToFront();
+        provinceLayer?.bringToFront();
+      } else {
+        countyLayer.remove();
+      }
+    });
+
+    function countyAiFillRulePatch(settings = {}) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const next = sanitizeSettings({ ...savedSettings });
+      let numericTouched = false;
+      let gradientTouched = false;
+      let rulesTouched = false;
+
+      const numericType = source.numericMode || source.numericFillType || source.mode;
+      if (numericType === "gradient") {
+        next.numericMode = "gradient";
+        gradientTouched = true;
+      } else if (["bucket", "buckets", "segment", "segments", "numeric"].includes(numericType)) {
+        next.numericMode = "bucket";
+        numericTouched = true;
+      }
+      if (source.excelDataColumn !== undefined) {
+        next.excelDataColumn = clamp(Math.floor(Number(source.excelDataColumn) || next.excelDataColumn), 1, RANK_DATA_COLUMN_COUNT);
+      } else if (source.fillDataIndex !== undefined) {
+        next.excelDataColumn = clamp(Math.floor(Number(source.fillDataIndex) + 1 || next.excelDataColumn), 1, RANK_DATA_COLUMN_COUNT);
+      }
+      if (source.bucketCount !== undefined) {
+        next.bucketCount = clamp(Math.floor(Number(source.bucketCount) || next.bucketCount), 2, 12);
+        next.numericMode = "bucket";
+        numericTouched = true;
+      }
+      if (Array.isArray(source.boundaries)) {
+        next.bucketBoundaries = source.boundaries.join(" ");
+        next.numericMode = "bucket";
+        numericTouched = true;
+      } else if (source.bucketBoundaries !== undefined) {
+        next.bucketBoundaries = String(source.bucketBoundaries || "");
+        next.numericMode = "bucket";
+        numericTouched = true;
+      }
+      if (Array.isArray(source.bucketColors)) {
+        next.bucketColors = source.bucketColors.filter(isHexColor).map((color) => String(color).toLowerCase());
+        next.numericMode = "bucket";
+        numericTouched = true;
+      }
+      if (Array.isArray(source.legendLabels)) {
+        next.legendLabels = source.legendLabels.map((label) => String(label ?? ""));
+      } else if (Array.isArray(source.bucketLegendLabels)) {
+        next.legendLabels = source.bucketLegendLabels.map((label) => String(label ?? ""));
+      }
+      const legendBarWidth = source.legendBarWidth ?? source.bucketLegendBarWidth ?? source.colorBarWidth;
+      if (legendBarWidth !== undefined) {
+        next.legendBarWidth = clamp(Math.floor(Number(legendBarWidth) || next.legendBarWidth), 180, 1200);
+      }
+      const legendBarHeight = source.legendBarHeight ?? source.bucketLegendBarHeight ?? source.colorBarHeight;
+      if (legendBarHeight !== undefined) {
+        next.legendBarHeight = clamp(Math.floor(Number(legendBarHeight) || next.legendBarHeight), 8, 80);
+      }
+      const legendLabelFontSize = source.legendLabelFontSize ?? source.bucketLegendLabelFontSize ?? source.colorBarLabelFontSize;
+      if (legendLabelFontSize !== undefined) {
+        next.legendLabelFontSize = clamp(Math.floor(Number(legendLabelFontSize) || next.legendLabelFontSize), 8, 48);
+      }
+      if (isHexColor(source.gradientLowColor)) {
+        next.gradientLowColor = String(source.gradientLowColor).toLowerCase();
+        next.numericMode = "gradient";
+        gradientTouched = true;
+      }
+      if (isHexColor(source.gradientHighColor)) {
+        next.gradientHighColor = String(source.gradientHighColor).toLowerCase();
+        next.numericMode = "gradient";
+        gradientTouched = true;
+      }
+      if (source.rulesText !== undefined) {
+        next.rulesText = String(source.rulesText || "");
+        rulesTouched = true;
+      }
+      if ((numericTouched || gradientTouched || rulesTouched) && !Array.isArray(source.legendLabels) && !Array.isArray(source.bucketLegendLabels)) {
+        next.legendLabels = [];
+      }
+      return sanitizeSettings(next);
+    }
+
+    function applyCountyAiFillRuleSettings(settings = {}) {
+      const before = JSON.stringify(sanitizeSettings({ ...savedSettings }));
+      const next = countyAiFillRulePatch(settings);
+      Object.assign(savedSettings, next);
+      writeJson(SETTINGS_KEY, savedSettings);
+      applySettingsToTopControls();
+      syncRulePanelFromSettings();
+      applyLegendVisualSize();
+      const after = JSON.stringify(sanitizeSettings({ ...savedSettings }));
+      if (before === after) {
+        return "页面没有检测到有效变化：AI 返回的设置与当前填色规则相同，或包含了不支持的字段。";
+      }
+      const applied = reapplyImportedDataColors();
+      renderLegendLabelEditor();
+      renderRankTable();
+      if (!applied) {
+        updateStatus("AI 已修改填色规则；当前没有可重算的导入数据，导入 Excel 后会按新规则填色。");
+      }
+      return applied ? "页面已确认：填色规则已修改，并已立即重新应用到当前县级数据。" : "页面已确认：填色规则已修改，等待导入数据后生效。";
+    }
+
+    function countyAiActiveDataIndex() {
+      return clamp(Math.floor(Number(savedSettings.excelDataColumn) || 1), 1, RANK_DATA_COLUMN_COUNT);
+    }
+
+    function countyAiRoundBoundary(value) {
+      return Number(Number(value).toFixed(8));
+    }
+
+    function countyAiRankRowsForDataIndex(fillIndex = countyAiActiveDataIndex()) {
+      const sourceRows = playbackRecords.length
+        ? playbackRecords.map((row) => ({ ...row }))
+        : matchedRowsFromImportedData(fillIndex).map((row) => ({ ...row }));
+      const rows = sourceRows
+        .filter((row) => row?.code && (!countyLayerByCode.size || countyLayerByCode.has(row.code)))
+        .map((row) => {
+          const meta = countyMetaByCode.get(row.code);
+          const value = row[`data${fillIndex}`] ?? row.value ?? "";
+          const number = parseNumber(value);
+          if (!Number.isFinite(number)) return null;
+          return {
+            ...row,
+            name: meta?.name || row.matchedName || row.sourceName || row.code,
+            parentName: meta?.parentName || row.parentName || "",
+            value: String(value ?? ""),
+            number
+          };
+        })
+        .filter(Boolean);
+      assignPlaybackRanks(rows);
+      assignParentRanks(rows);
+      rows.sort(comparePlaybackOrder);
+      return rows;
+    }
+
+    function buildCountyAiRankDataContext() {
+      const fillIndex = countyAiActiveDataIndex();
+      const rows = countyAiRankRowsForDataIndex(fillIndex);
+      const values = rows.map((row) => row.number).filter((value) => Number.isFinite(value));
+      return {
+        scope: `${PROVINCE.name}县级榜单`,
+        activeDataIndex: fillIndex - 1,
+        activeExcelDataColumn: fillIndex,
+        activeDataColumn: `data${fillIndex}`,
+        count: rows.length,
+        numericCount: values.length,
+        min: values.length ? Math.min(...values) : null,
+        max: values.length ? Math.max(...values) : null,
+        currentPlaybackDirection: selectedPlaybackDirection(),
+        rows: rows.slice(0, 1000).map((row) => ({
+          code: row.code,
+          countyName: row.name,
+          parentCity: row.parentName,
+          totalRank: row.rank,
+          parentRank: `${row.parentRankName || shortParentRankName(row.parentName)}${row.parentRank}`,
+          activeValue: row.value,
+          activeNumber: row.number,
+          dataValues: Object.fromEntries(DATA_KEYS.map((key) => [key, row[key] ?? ""]))
+        }))
+      };
+    }
+
+    function countyEqualCountBoundariesFromRows(rows, bucketTotal) {
+      const values = rows
+        .map((row) => Number(row.number))
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => a - b);
+      if (values.length < 2 || bucketTotal < 2) return [];
+      return Array.from({ length: bucketTotal - 1 }, (_, index) => {
+        const position = Math.ceil((values.length * (index + 1)) / bucketTotal) - 1;
+        return countyAiRoundBoundary(values[Math.max(0, Math.min(values.length - 1, position))]);
+      });
+    }
+
+    function countyAiFormatBoundaryLabel(value, decimalPlaces) {
+      const places = clamp(Math.floor(Number(decimalPlaces)), 0, 6);
+      return Number(value).toLocaleString("zh-CN", {
+        minimumFractionDigits: Number.isFinite(places) ? places : 1,
+        maximumFractionDigits: Number.isFinite(places) ? places : 1
+      });
+    }
+
+    function countyLegendLabelsForBoundaries(min, max, boundaries, decimalPlaces) {
+      return [min, ...boundaries, max].map((value) => countyAiFormatBoundaryLabel(value, decimalPlaces));
+    }
+
+    function countyTopCountThenEqualBoundariesFromRows(rows, bucketTotal, topCount) {
+      const valuesDesc = rows
+        .map((row) => Number(row.number))
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a);
+      if (valuesDesc.length < topCount + 1 || bucketTotal < 2) {
+        return [];
+      }
+      const topValue = valuesDesc[topCount - 1];
+      const nextValue = valuesDesc[topCount];
+      if (topValue === nextValue) {
+        throw new Error(`第 ${topCount} 名和第 ${topCount + 1} 名数值相同，无法只让前 ${topCount} 个进入最高段。`);
+      }
+      const topBoundary = countyAiRoundBoundary((topValue + nextValue) / 2);
+      const lowerBucketTotal = bucketTotal - 1;
+      const lowerValues = valuesDesc
+        .filter((value) => value <= topBoundary)
+        .sort((a, b) => a - b);
+      const lowerBoundaries = Array.from({ length: Math.max(0, lowerBucketTotal - 1) }, (_, index) => {
+        const position = Math.ceil((lowerValues.length * (index + 1)) / lowerBucketTotal) - 1;
+        return countyAiRoundBoundary(lowerValues[Math.max(0, Math.min(lowerValues.length - 1, position))]);
+      });
+      return [...lowerBoundaries, topBoundary].sort((a, b) => a - b);
+    }
+
+    function applyCountyAiTopCountThenEqualBuckets(settings = {}) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const fallbackCount = clamp(Math.floor(Number(savedSettings.bucketCount) || 7), 2, 12);
+      const bucketTotal = clamp(Math.floor(Number(source.bucketCount) || fallbackCount), 2, 12);
+      const topCount = clamp(Math.floor(Number(source.topCount) || 10), 1, 9999);
+      const fillIndex = source.fillDataIndex !== undefined
+        ? clamp(Math.floor(Number(source.fillDataIndex) + 1 || countyAiActiveDataIndex()), 1, RANK_DATA_COLUMN_COUNT)
+        : source.excelDataColumn !== undefined
+          ? clamp(Math.floor(Number(source.excelDataColumn) || countyAiActiveDataIndex()), 1, RANK_DATA_COLUMN_COUNT)
+          : countyAiActiveDataIndex();
+      const rows = countyAiRankRowsForDataIndex(fillIndex);
+      const boundaries = countyTopCountThenEqualBoundariesFromRows(rows, bucketTotal, topCount);
+      if (!boundaries.length) {
+        throw new Error("当前没有足够的县级榜单数字数据用于最高段固定数量分段。");
+      }
+      const values = rows.map((row) => row.number).filter((value) => Number.isFinite(value));
+      const patch = {
+        numericMode: "bucket",
+        excelDataColumn: fillIndex,
+        bucketCount: bucketTotal,
+        boundaries
+      };
+      if (Array.isArray(source.bucketColors)) {
+        patch.bucketColors = source.bucketColors;
+      }
+      if (source.legendDecimalPlaces !== undefined) {
+        patch.legendLabels = countyLegendLabelsForBoundaries(Math.min(...values), Math.max(...values), boundaries, source.legendDecimalPlaces);
+      } else if (Array.isArray(source.legendLabels)) {
+        patch.legendLabels = source.legendLabels;
+      }
+      const appliedMessage = applyCountyAiFillRuleSettings(patch);
+      return `${appliedMessage}\n已计算：最高颜色段保留前 ${topCount} 个，剩余 ${Math.max(0, rows.length - topCount)} 个按数量拆成 ${bucketTotal - 1} 段。边界：${boundaries.join(" ")}`;
+    }
+    function applyCountyAiEqualCountBuckets(settings = {}) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const fallbackCount = clamp(Math.floor(Number(savedSettings.bucketCount) || 7), 2, 12);
+      const bucketTotal = clamp(Math.floor(Number(source.bucketCount) || fallbackCount), 2, 12);
+      const fillIndex = source.fillDataIndex !== undefined
+        ? clamp(Math.floor(Number(source.fillDataIndex) + 1 || countyAiActiveDataIndex()), 1, RANK_DATA_COLUMN_COUNT)
+        : source.excelDataColumn !== undefined
+          ? clamp(Math.floor(Number(source.excelDataColumn) || countyAiActiveDataIndex()), 1, RANK_DATA_COLUMN_COUNT)
+          : countyAiActiveDataIndex();
+      const rows = countyAiRankRowsForDataIndex(fillIndex);
+      const boundaries = countyEqualCountBoundariesFromRows(rows, bucketTotal);
+      if (!boundaries.length) {
+        throw new Error("当前没有足够的县级榜单数字数据用于等数量分段。");
+      }
+      const patch = {
+        numericMode: "bucket",
+        excelDataColumn: fillIndex,
+        bucketCount: bucketTotal,
+        boundaries
+      };
+      if (Array.isArray(source.bucketColors)) {
+        patch.bucketColors = source.bucketColors;
+      }
+      const appliedMessage = applyCountyAiFillRuleSettings(patch);
+      return `${appliedMessage}\n已按 ${rows.length} 个县级榜单数值生成 ${bucketTotal} 段等数量边界：${boundaries.join(" ")}`;
+    }
+    function installCountyMapProjectAiBridge() {
+      window.mapProjectAiBridge = {
+        getContext() {
+          return {
+            page: "province-county-map",
+            province: PROVINCE.name,
+            actions: ["updateFillRule", "equalCountBuckets", "topCountThenEqualBuckets", "updatePlaybackAnimation"],
+            playbackAnimation: collectPlaybackAnimationSettings(),
+            fillRule: {
+              excelDataColumn: savedSettings.excelDataColumn,
+              numericMode: savedSettings.numericMode,
+              bucketCount: savedSettings.bucketCount,
+              bucketBoundaries: savedSettings.bucketBoundaries,
+              bucketColors: savedSettings.bucketColors,
+              gradientLowColor: savedSettings.gradientLowColor,
+              gradientHighColor: savedSettings.gradientHighColor,
+              rulesText: savedSettings.rulesText,
+              legendBarWidth: savedSettings.legendBarWidth,
+              legendBarHeight: savedSettings.legendBarHeight,
+              legendLabelFontSize: savedSettings.legendLabelFontSize
+            },
+            rankData: buildCountyAiRankDataContext(),
+            schema: {
+              excelDataColumn: "1-8, maps to data1-data8",
+              numericMode: ["bucket", "gradient"],
+              bucketCount: "2-12",
+              bucketBoundaries: "space-separated numbers, e.g. 0 10 20 50",
+              bucketColors: "array of #RRGGBB colors",
+              gradientLowColor: "#RRGGBB",
+              gradientHighColor: "#RRGGBB",
+              rulesText: "one line per rule, e.g. >=80=#e76f51",
+              legendBarWidth: "180-1200 px, color bar display width only",
+              legendBarHeight: "8-80 px, color bar display height only",
+              legendLabelFontSize: "8-48 px, numbers below the color bar only",
+              equalCountBuckets: "uses current rankData to compute bucket boundaries with similar numbers of county regions",
+              topCountThenEqualBuckets: "keeps top N county regions in the highest color bucket and splits the rest into other buckets",
+              playbackAnimation: "safe playback animation settings; mode none/outline/pop/fly/fly-left/fly-right/fly-top/fly-bottom/flash/halo/draw/drop; duration 80-6000; scale 1-3; direction center/left/right/top/bottom/top-left/top-right/bottom-left/bottom-right; easing linear/ease-in/ease-out/ease-in-out/smooth; colorMode custom/fill; color #RRGGBB for custom color; fillOpacity 0-0.8; outlineWidth 1-12"
+            }
+          };
+        },
+        applyActions(actions = []) {
+          const messages = [];
+          actions.forEach((action) => {
+            if (!action) return;
+            if (action.type === "updateFillRule") {
+              messages.push(applyCountyAiFillRuleSettings(action.settings || {}));
+            } else if (action.type === "equalCountBuckets") {
+              messages.push(applyCountyAiEqualCountBuckets(action.settings || {}));
+            } else if (action.type === "topCountThenEqualBuckets") {
+              messages.push(applyCountyAiTopCountThenEqualBuckets(action.settings || {}));
+            } else if (action.type === "updatePlaybackAnimation") {
+              messages.push(applyCountyAiPlaybackAnimationSettings(action.settings || {}));
+            }
+          });
+          if (!messages.length) {
+            throw new Error("没有可应用的填色规则动作。");
+          }
+          return { message: messages.join("\n") };
+        }
+      };
+    }
+
+    installCountyMapProjectAiBridge();
+
+    [excelDataColumn, numericMode, bucketCount].forEach((control) => {
+      control.addEventListener("change", () => {
+        Object.assign(savedSettings, sanitizeSettings({
+          ...savedSettings,
+          excelDataColumn: Number(excelDataColumn.value),
+          numericMode: numericMode.value,
+          bucketCount: Number(bucketCount.value),
+          rankSortColumn: control === excelDataColumn ? Number(excelDataColumn.value) : savedSettings.rankSortColumn
+        }));
+        if (control === excelDataColumn) {
+          rankSortColumn.value = String(savedSettings.rankSortColumn);
+        }
+        writeJson(SETTINGS_KEY, savedSettings);
+        syncRulePanelFromSettings();
+        reapplyImportedDataColors();
+        renderRankTable();
+      });
+    });
+
+    rulesButton.addEventListener("click", () => {
+      syncRulePanelFromSettings();
+      rulesPanel.classList.remove("hidden");
+    });
+
+    rulesClose.addEventListener("click", () => rulesPanel.classList.add("hidden"));
+
+    ruleBucketCount.addEventListener("change", () => {
+      renderRuleBucketColors(collectRuleBucketColors());
+    });
+
+    document.getElementById("resetBucketColorsButton").addEventListener("click", () => {
+      renderRuleBucketColors(DEFAULT_COLORS);
+    });
+
+    document.getElementById("saveRulesButton").addEventListener("click", () => {
+      Object.assign(savedSettings, collectRulePanelSettings(true));
+      writeJson(SETTINGS_KEY, savedSettings);
+      applySettingsToTopControls();
+      syncRulePanelFromSettings();
+      reapplyImportedDataColors();
+      renderLegendLabelEditor();
+      updateStatus("已保存并应用县级地图填色规则。");
+    });
+
+    legendLabelButton.addEventListener("click", () => {
+      renderLegendLabelEditor();
+      legendLabelPanel.classList.remove("hidden");
+    });
+
+    legendLabelClose.addEventListener("click", () => legendLabelPanel.classList.add("hidden"));
+    saveLegendLabelsButton.addEventListener("click", saveLegendLabelDisplay);
+    resetLegendLabelsButton.addEventListener("click", () => {
+      savedSettings.legendLabels = [];
+      writeJson(SETTINGS_KEY, savedSettings);
+      if (latestLegend.length && latestLegendDefaultLabels.length) {
+        const markers = latestLegend[0].markers || [];
+        markers.forEach((marker, index) => {
+          marker.label = latestLegendDefaultLabels[index] ?? marker.label;
+        });
+        updateLegend(latestLegend);
+      }
+      applyLegendVisualSize();
+      renderLegendLabelEditor();
+      updateStatus("已恢复默认色条数字。");
+    });
+
+    toolbarClose.addEventListener("click", () => {
+      topbar.classList.add("hidden");
+      toolbarOpen.classList.remove("hidden");
+    });
+
+    toolbarOpen.addEventListener("click", () => {
+      topbar.classList.remove("hidden");
+      toolbarOpen.classList.add("hidden");
+    });
+
+    function adjustFineZoom(delta) {
+      const nextZoom = Math.max(
+        map.getMinZoom(),
+        Math.min(map.getMaxZoom(), Number((map.getZoom() + delta).toFixed(2)))
+      );
+      map.setZoomAround(map.getCenter(), nextZoom, { animate: false });
+    }
+
+    document.querySelectorAll(".fine-zoom button[data-zoom-step]").forEach((button) => {
+      ["pointerdown", "mousedown", "touchstart", "dblclick"].forEach((type) => {
+        button.addEventListener(type, (event) => {
+          event.stopPropagation();
+        }, { passive: false });
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const step = button.dataset.zoomStep;
+        const delta = step === "in" ? 0.1 : step === "out" ? -0.1 : step === "fine-in" ? 0.01 : -0.01;
+        adjustFineZoom(delta);
+      });
+    });
+
+    reportButton.addEventListener("click", () => {
+      renderReport();
+      reportPanel.classList.remove("hidden");
+    });
+
+    document.getElementById("reportClose").addEventListener("click", () => reportPanel.classList.add("hidden"));
+
+    rankButton.addEventListener("click", () => {
+      const shouldShow = rankPanel.classList.contains("hidden");
+      if (shouldShow) {
+        applyRankSettingsToTable(false);
+        renderRankTable(Number(playbackRange.value));
+      }
+      setRankPanelVisible(shouldShow);
+    });
+
+    rankClose.addEventListener("click", () => setRankPanelVisible(false));
+
+    rankSettingsButton.addEventListener("click", () => {
+      const shouldShow = rankSettingsPanel.classList.contains("hidden");
+      if (shouldShow) {
+        syncRankColumnTitleInputs(savedSettings.rankColumnTitles, savedSettings.rankColumnWidths);
+      }
+      setPanelVisible(rankSettingsPanel, rankSettingsButton, shouldShow);
+    });
+
+    rankSettingsClose.addEventListener("click", () => setPanelVisible(rankSettingsPanel, rankSettingsButton, false));
+
+    animationSettingsButton.addEventListener("click", () => {
+      const shouldShow = animationSettingsPanel.classList.contains("hidden");
+      setPanelVisible(animationSettingsPanel, animationSettingsButton, shouldShow);
+      if (shouldShow) {
+        updatePlaybackAnimationFields();
+        keepPanelReachable(animationSettingsPanel);
+      }
+    });
+
+    animationSettingsClose.addEventListener("click", () => setPanelVisible(animationSettingsPanel, animationSettingsButton, false));
+
+    [playbackAnimationMode, playbackAnimationDuration, playbackAnimationScale, playbackAnimationDirection, playbackAnimationEasing, playbackAnimationColorMode, playbackAnimationColor, playbackAnimationFillOpacity, playbackAnimationOutlineWidth].forEach((control) => {
+      control?.addEventListener("input", () => setPlaybackAnimationSettings(collectPlaybackAnimationSettings(), true));
+      control?.addEventListener("change", () => setPlaybackAnimationSettings(collectPlaybackAnimationSettings(), true));
+    });
+
+    savePlaybackAnimationSettingsButton.addEventListener("click", () => {
+      setPlaybackAnimationSettings(collectPlaybackAnimationSettings(), true);
+      updateStatus("已保存播放动画设置。");
+    });
+
+    resetPlaybackAnimationSettingsButton.addEventListener("click", () => {
+      setPlaybackAnimationSettings(defaultPlaybackAnimationSettings(), true);
+      updateStatus("已恢复默认播放动画设置。");
+    });
+
+    playbackButton.addEventListener("click", () => {
+      const shouldShow = playbackPanel.classList.contains("hidden");
+      if (shouldShow) {
+        preparePlaybackRecords(null, { progressFromStoredColors: true });
+      }
+      setPanelVisible(playbackPanel, playbackButton, shouldShow);
+    });
+
+    playbackClose.addEventListener("click", () => setPanelVisible(playbackPanel, playbackButton, false));
+
+    playbackRange.addEventListener("input", () => {
+      stopPlayback();
+      setPlaybackProgress(Number(playbackRange.value), { persist: true });
+    });
+
+    playButton.addEventListener("click", () => {
+      if (playbackTimer || playbackStartTimer) {
+        stopPlayback();
+        saveColors();
+        return;
+      }
+      startPlayback();
+    });
+
+    resetPlaybackButton.addEventListener("click", () => {
+      stopPlayback();
+      setPlaybackProgress(0, { persist: true });
+    });
+
+    playbackDirection.addEventListener("change", () => {
+      const wasPlaying = Boolean(playbackTimer || playbackStartTimer);
+      stopPlayback();
+      rankSortDirection.value = playbackDirection.value;
+      saveRankViewSettings();
+      if (wasPlaying) startPlayback();
+    });
+
+    [rankSortColumn, rankSortDirection].forEach((control) => {
+      control.addEventListener("input", saveRankViewSettings);
+      control.addEventListener("change", saveRankViewSettings);
+    });
+
+    rankVisibleRows.addEventListener("change", () => applyRankSettingsToTable(true));
+
+    rankColumnCount.addEventListener("input", () => {
+      syncRankColumnTitleInputs();
+      applyRankSettingsToTable(false);
+    });
+
+    rankColumnCount.addEventListener("change", () => applyRankSettingsToTable(true));
+    rankColumnTitleFields.addEventListener("change", () => applyRankSettingsToTable(true));
+    applyRankSettings.addEventListener("click", () => applyRankSettingsToTable(true));
+
+    [playbackSpeed, playbackDelay].forEach((control) => {
+      control.addEventListener("change", () => {
+        saveSettings();
+        if (playbackTimer || playbackStartTimer) {
+          stopPlayback();
+          startPlayback();
+        }
+      });
+    });
+
+    map.on("click", () => {
+      selectedLayer = null;
+      clearSelectedOutline();
+      infoPanel.classList.add("hidden");
+      refreshCountyStyles();
+    });
+
+    applySettingsToTopControls();
+    syncRulePanelFromSettings();
+    applyLegendVisualSize();
+    renderLegendLabelEditor();
+    syncReportButton();
+    renderRankTable();
+    floatingPanels().forEach(enablePanelDrag);
+    window.addEventListener("resize", () => {
+      floatingPanels().forEach(keepPanelReachable);
+    });
+    setFloatingPanelsLocked(false);
+    setFloatingCloseButtonsHidden(floatingCloseButtonsHidden);
+    buildPalette();
+    initMap();
+  </script>
+  <script src="map_pages/ai_panel.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

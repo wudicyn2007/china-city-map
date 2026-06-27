@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>忽略方案</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1e2b33;
+      --muted: #60727b;
+      --line: #cbd9dd;
+      --brand: #2f7f83;
+      --brand-dark: #27666a;
+      --paper: #ffffff;
+      --soft: #eef6f5;
+      --danger: #b85c4d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #f5f8f8;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .title {
+      display: grid;
+      gap: 3px;
+    }
+
+    .title strong {
+      font-size: 20px;
+    }
+
+    .title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .button.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .button.danger {
+      border-color: #d6a196;
+      color: var(--danger);
+    }
+
+    main {
+      width: min(1220px, calc(100vw - 32px));
+      margin: 18px auto 38px;
+      display: grid;
+      grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    section {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 16px;
+      box-shadow: 0 16px 38px rgba(31, 48, 57, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 500;
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      min-height: 20px;
+      padding: 0;
+      accent-color: var(--brand);
+    }
+
+    .scheme-list,
+    .city-list {
+      display: grid;
+      gap: 8px;
+      max-height: calc(100vh - 270px);
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .scheme-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfdfd;
+      cursor: pointer;
+    }
+
+    .scheme-item.active {
+      border-color: var(--brand);
+      background: var(--soft);
+      box-shadow: inset 4px 0 0 var(--brand);
+    }
+
+    .scheme-name {
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .scheme-meta,
+    .city-meta,
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .city-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 10px 0 12px;
+    }
+
+    .city-tools .search {
+      flex: 1 1 260px;
+    }
+
+    .city-item {
+      display: grid;
+      grid-template-columns: auto minmax(120px, 1fr) minmax(180px, 1.2fr);
+      gap: 10px;
+      align-items: center;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fbfdfd;
+    }
+
+    .city-name {
+      font-weight: 850;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .toast {
+      grid-column: 1 / -1;
+      min-height: 22px;
+      color: var(--brand-dark);
+      font-weight: 800;
+    }
+
+    @media (max-width: 860px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      main,
+      .editor-grid,
+      .city-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <strong>忽略方案</strong>
+      <span>多个方案可以同时启用，地图和导入时按并集忽略。</span>
+    </div>
+    <div class="actions">
+      <button id="newScheme" class="button primary" type="button">新建方案</button>
+      <button id="saveScheme" class="button primary" type="button">保存修改</button>
+      <button id="deleteScheme" class="button danger" type="button">删除方案</button>
+      <button id="backButton" class="button" type="button">返回地图</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>方案</h2>
+      <div id="schemeList" class="scheme-list"></div>
+    </section>
+
+    <section>
+      <h2>编辑</h2>
+      <div class="editor-grid">
+        <label>
+          方案名称
+          <input id="schemeName" type="text" maxlength="40">
+        </label>
+        <label>
+          内置规则
+          <select id="schemePreset">
+            <option value="">无，仅使用手动勾选</option>
+            <option value="nonPrefecture">忽略县级</option>
+            <option value="regionLeague">忽略自治州/地区/盟</option>
+          </select>
+        </label>
+        <label class="wide" style="display:flex; align-items:center; gap:10px;">
+          <input id="schemeActive" type="checkbox">
+          启用这个忽略方案
+        </label>
+      </div>
+
+      <div class="city-tools">
+        <input id="cityFilter" class="search" type="search" placeholder="搜索城市、省份、类型、代码">
+        <button id="selectFiltered" class="button" type="button">勾选当前筛选</button>
+        <button id="unselectFiltered" class="button" type="button">取消当前筛选</button>
+        <button id="clearSelected" class="button" type="button">清空勾选</button>
+      </div>
+      <div id="summary" class="hint"></div>
+      <div id="cityList" class="city-list" style="margin-top: 10px;"></div>
+    </section>
+
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script>
+    const IGNORE_SCHEMES_STORAGE_KEY = "china-prefecture-map-ignore-schemes-v1";
+    const IGNORE_NON_PREFECTURE_KEY = "china-prefecture-map-ignore-non-prefecture-v1";
+    const CITY_INDEX_STORAGE_KEY = "china-prefecture-map-city-index-v1";
+    const DEFAULT_IGNORE_SCHEMES = [
+      { id: "preset-non-prefecture", name: "忽略县级", preset: "nonPrefecture", adcodes: [], active: false },
+      { id: "preset-region-league", name: "忽略自治州/地区/盟", preset: "regionLeague", adcodes: [], active: false }
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    let schemes = loadSchemes();
+    let selectedId = schemes[0]?.id || "";
+
+    function asAdcode(value) {
+      return String(value || "").padStart(6, "0");
+    }
+
+    function makeId() {
+      if (window.crypto?.randomUUID) return `ignore-${window.crypto.randomUUID()}`;
+      return `ignore-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function defaultSchemes(legacyActive = false) {
+      return DEFAULT_IGNORE_SCHEMES.map((scheme) => ({
+        ...scheme,
+        adcodes: [...scheme.adcodes],
+        active: scheme.id === "preset-non-prefecture" ? Boolean(legacyActive) : Boolean(scheme.active),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }));
+    }
+
+    function cleanScheme(value, index = 0) {
+      if (!value || typeof value !== "object") return null;
+      const preset = ["nonPrefecture", "regionLeague"].includes(value.preset) ? value.preset : "";
+      const adcodes = Array.from(new Set((Array.isArray(value.adcodes) ? value.adcodes : [])
+        .map(asAdcode)
+        .filter((code) => /^\d{6}$/.test(code) && code !== "000000")));
+      return {
+        id: String(value.id || `ignore-${Date.now()}-${index}`).slice(0, 80),
+        name: String(value.name || `忽略方案 ${index + 1}`).trim().slice(0, 40) || `忽略方案 ${index + 1}`,
+        preset,
+        adcodes,
+        active: Boolean(value.active),
+        createdAt: Number(value.createdAt) || Date.now(),
+        updatedAt: Number(value.updatedAt) || Date.now()
+      };
+    }
+
+    function cleanSchemes(value) {
+      if (!Array.isArray(value)) return [];
+      const seen = new Set();
+      return value.map(cleanScheme).filter((scheme) => {
+        if (!scheme || seen.has(scheme.id)) return false;
+        seen.add(scheme.id);
+        return true;
+      });
+    }
+
+    function loadSchemes() {
+      try {
+        const raw = localStorage.getItem(IGNORE_SCHEMES_STORAGE_KEY);
+        if (raw !== null) {
+          const parsed = cleanSchemes(JSON.parse(raw));
+          return parsed.length ? parsed : defaultSchemes(false);
+        }
+        return defaultSchemes(localStorage.getItem(IGNORE_NON_PREFECTURE_KEY) === "true");
+      } catch {
+        return defaultSchemes(false);
+      }
+    }
+
+    function saveSchemes() {
+      schemes = cleanSchemes(schemes);
+      localStorage.setItem(IGNORE_SCHEMES_STORAGE_KEY, JSON.stringify(schemes));
+      localStorage.setItem(
+        IGNORE_NON_PREFECTURE_KEY,
+        String(schemes.some((scheme) => scheme.active && scheme.preset === "nonPrefecture"))
+      );
+      render();
+      $("toast").textContent = "已保存。回到地图后会自动应用。";
+    }
+
+    function selectedScheme() {
+      return schemes.find((scheme) => scheme.id === selectedId) || null;
+    }
+
+    function presetText(preset) {
+      if (preset === "nonPrefecture") return "忽略县级";
+      if (preset === "regionLeague") return "忽略自治州/地区/盟";
+      return "手动勾选";
+    }
+
+    function schemeSummary(scheme) {
+      const parts = [];
+      if (scheme.preset) parts.push(presetText(scheme.preset));
+      parts.push(`手动 ${scheme.adcodes.length} 个`);
+      parts.push(scheme.active ? "已启用" : "未启用");
+      return parts.join(" · ");
+    }
+
+    function readCityIndex() {
+      try {
+        const rows = JSON.parse(localStorage.getItem(CITY_INDEX_STORAGE_KEY) || "[]");
+        if (!Array.isArray(rows)) return [];
+        return rows.map((row) => ({
+          adcode: asAdcode(row.adcode),
+          name: String(row.name || ""),
+          provinceName: String(row.provinceName || "-"),
+          layerType: String(row.layerType || "市界")
+        })).filter((row) => /^\d{6}$/.test(row.adcode) && row.name).sort((a, b) => {
+          const byProvince = a.provinceName.localeCompare(b.provinceName, "zh-Hans-CN");
+          if (byProvince) return byProvince;
+          return a.name.localeCompare(b.name, "zh-Hans-CN");
+        });
+      } catch {
+        return [];
+      }
+    }
+
+    function filteredCities() {
+      const keyword = $("cityFilter").value.trim().toLowerCase();
+      const rows = readCityIndex();
+      if (!keyword) return rows;
+      return rows.filter((row) => [row.name, row.provinceName, row.layerType, row.adcode]
+        .some((value) => String(value || "").toLowerCase().includes(keyword)));
+    }
+
+    function renderSchemeList() {
+      const host = $("schemeList");
+      host.innerHTML = "";
+      if (!schemes.length) {
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = "暂无方案，点击新建方案。";
+        host.append(empty);
+        return;
+      }
+      schemes.forEach((scheme) => {
+        const item = document.createElement("div");
+        item.className = "scheme-item";
+        item.classList.toggle("active", scheme.id === selectedId);
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = scheme.active;
+        checkbox.title = "启用这个忽略方案";
+        checkbox.addEventListener("click", (event) => event.stopPropagation());
+        checkbox.addEventListener("change", () => {
+          scheme.active = checkbox.checked;
+          scheme.updatedAt = Date.now();
+          saveSchemes();
+        });
+
+        const body = document.createElement("div");
+        const name = document.createElement("div");
+        name.className = "scheme-name";
+        name.textContent = scheme.name;
+        const meta = document.createElement("div");
+        meta.className = "scheme-meta";
+        meta.textContent = schemeSummary(scheme);
+        body.append(name, meta);
+
+        item.append(checkbox, body);
+        item.addEventListener("click", () => {
+          selectedId = scheme.id;
+          render();
+        });
+        host.append(item);
+      });
+    }
+
+    function fillEditor() {
+      const scheme = selectedScheme();
+      const disabled = !scheme;
+      $("schemeName").disabled = disabled;
+      $("schemePreset").disabled = disabled;
+      $("schemeActive").disabled = disabled;
+      $("saveScheme").disabled = disabled;
+      $("deleteScheme").disabled = disabled;
+      $("selectFiltered").disabled = disabled;
+      $("unselectFiltered").disabled = disabled;
+      $("clearSelected").disabled = disabled;
+      $("cityFilter").disabled = disabled;
+      $("schemeName").value = scheme?.name || "";
+      $("schemePreset").value = scheme?.preset || "";
+      $("schemeActive").checked = Boolean(scheme?.active);
+    }
+
+    function renderCityList() {
+      const host = $("cityList");
+      const scheme = selectedScheme();
+      host.innerHTML = "";
+      if (!scheme) {
+        $("summary").textContent = "未选择方案。";
+        return;
+      }
+      const allRows = readCityIndex();
+      const rows = filteredCities();
+      const selected = new Set(scheme.adcodes);
+      $("summary").textContent = allRows.length
+        ? `可选区域 ${allRows.length} 个，当前筛选 ${rows.length} 个，已手动勾选 ${selected.size} 个。`
+        : "还没有城市索引。请先打开全国地图，等地图边界加载完成一次，再回来管理手动勾选。";
+
+      if (!rows.length) {
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = allRows.length ? "没有符合筛选的区域。" : "城市列表为空。";
+        host.append(empty);
+        return;
+      }
+
+      rows.forEach((row) => {
+        const item = document.createElement("label");
+        item.className = "city-item";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = selected.has(row.adcode);
+        checkbox.addEventListener("change", () => {
+          const next = new Set(scheme.adcodes);
+          if (checkbox.checked) next.add(row.adcode);
+          else next.delete(row.adcode);
+          scheme.adcodes = Array.from(next);
+          scheme.updatedAt = Date.now();
+          saveSchemes();
+        });
+
+        const name = document.createElement("span");
+        name.className = "city-name";
+        name.textContent = row.name;
+        const meta = document.createElement("span");
+        meta.className = "city-meta";
+        meta.textContent = `${row.provinceName} · ${row.layerType} · ${row.adcode}`;
+        item.append(checkbox, name, meta);
+        host.append(item);
+      });
+    }
+
+    function render() {
+      if (selectedId && !schemes.some((scheme) => scheme.id === selectedId)) {
+        selectedId = schemes[0]?.id || "";
+      }
+      if (!selectedId && schemes.length) selectedId = schemes[0].id;
+      renderSchemeList();
+      fillEditor();
+      renderCityList();
+    }
+
+    function updateSelectedFromEditor() {
+      const scheme = selectedScheme();
+      if (!scheme) return;
+      const name = $("schemeName").value.trim();
+      if (!name) {
+        $("toast").textContent = "方案名称不能为空。";
+        return;
+      }
+      scheme.name = name.slice(0, 40);
+      scheme.preset = $("schemePreset").value;
+      scheme.active = $("schemeActive").checked;
+      scheme.updatedAt = Date.now();
+      saveSchemes();
+    }
+
+    function createScheme() {
+      const name = prompt("请输入忽略方案名称", `忽略方案 ${schemes.length + 1}`);
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (!trimmed) {
+        $("toast").textContent = "方案名称不能为空。";
+        return;
+      }
+      const scheme = {
+        id: makeId(),
+        name: trimmed.slice(0, 40),
+        preset: "",
+        adcodes: [],
+        active: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      schemes.push(scheme);
+      selectedId = scheme.id;
+      saveSchemes();
+    }
+
+    function deleteScheme() {
+      const scheme = selectedScheme();
+      if (!scheme || !confirm(`删除忽略方案“${scheme.name}”？`)) return;
+      schemes = schemes.filter((item) => item.id !== scheme.id);
+      selectedId = schemes[0]?.id || "";
+      saveSchemes();
+    }
+
+    function setFilteredSelection(checked) {
+      const scheme = selectedScheme();
+      if (!scheme) return;
+      const next = new Set(scheme.adcodes);
+      filteredCities().forEach((row) => {
+        if (checked) next.add(row.adcode);
+        else next.delete(row.adcode);
+      });
+      scheme.adcodes = Array.from(next);
+      scheme.updatedAt = Date.now();
+      saveSchemes();
+    }
+
+    $("newScheme").addEventListener("click", createScheme);
+    $("saveScheme").addEventListener("click", updateSelectedFromEditor);
+    $("deleteScheme").addEventListener("click", deleteScheme);
+    $("schemeName").addEventListener("change", updateSelectedFromEditor);
+    $("schemePreset").addEventListener("change", updateSelectedFromEditor);
+    $("schemeActive").addEventListener("change", updateSelectedFromEditor);
+    $("cityFilter").addEventListener("input", renderCityList);
+    $("selectFiltered").addEventListener("click", () => setFilteredSelection(true));
+    $("unselectFiltered").addEventListener("click", () => setFilteredSelection(false));
+    $("clearSelected").addEventListener("click", () => {
+      const scheme = selectedScheme();
+      if (!scheme) return;
+      scheme.adcodes = [];
+      scheme.updatedAt = Date.now();
+      saveSchemes();
+    });
+    $("backButton").addEventListener("click", () => {
+      location.href = "../china_prefecture_map.html";
+    });
+
+    render();
+  </script>
+</body>
+</html>
